@@ -4,43 +4,45 @@ Browser client library for treetop enabled web servers.
 
 See [Treetop server library](https://github.com/rur/treetop) for more details.
 
-## Client Library
-
 The __treetop.js__ script must be sourced by the browser to enable in-page navigation.
 
-### The `treetop` Attribute
+## Client Library
 
-The most convenient way to enable in-page nav is declaratively. The behavior of specific elements can be overloaded by adding a `treetop` attribute. This allows your template to decide which navigation actions should trigger full-page vs. in-page loading.
+The client library exposes the `window.treetop` instance. The library provides the following features to your JS scripts:
 
-Here is an example of an anchor tag:
+* API to trigger Treetop requests.
+* Hooks for mounting & unmounting component code.
+* Configure how responses are handled.
+
+## Components
+
+#### The treetop HTML attribute
+
+The treetop attribute allows the behavior of anchors and forms to be hijacked, for example:
 
 ```
 <a treetop href="/some/path">treetop link</a>
-
 ```
-Click event trigger the following treetop request, as you might expect.
+Click event on this anchor is equivalent to the following treetop request using the client library.
 ```
 treetop.request("GET", "/some/path")
 ```
-Here is an example of a form tag:
+Here is an example with a form tag:
 ```
-
 <form treetop action="/some/path" method="POST">
     <input name="foo" value="bar" type="text"/>
     <input type="submit"/>
 </form>
 
 ```
-Submit event will trigger the following request,
+Submit event here is the same as the following library call,
 ```
 treetop.request("POST", "/some/path", "foo=bar", "application/x-www-form-urlencoded")
 ```
 
-### Client Library API
+###  Client Library API
 
-The client library exposes the `window.treetop` instance with the following methods:
-
-#### treetop.request
+####  treetop.request
 Issue a treetop request. Notice that no callback mechanism is available. This is by design. Response handling is mandated by the protocol, see [Treetop Request](https://github.com/rur/treetop/blob/master/README.markdown#how-treetop-requests-work)
 
 ##### Usage
@@ -52,24 +54,28 @@ treetop.request( [method], [url], [body], [contentType])
 
 | Param             | Type    | Details                                          |
 |-------------------|---------|--------------------------------------------------|
-| method            | string  | The HTTP request method  to use                  |
-| url               | string  | The URL path                                     |
-| body              | *string | the request body, encoded string                 |
+| method            | string  | The HTTP request method to use                  |
+| URL               | string  | The URL path                                     |
+| body              | *string | the request body encoded string                 |
 | contentType       | *string | describe the encoding of the request body        |
 
 _*optional_
 
-### `treetop.push` Component
+### Components
 
-Register a mount and unmount function for custom components. Elements are matching by either tagName or attrName. The mounting functions will be called by treetop during the course of replacing a region of the DOM.
+Treetop provides a hook for attaching custom JS to recently mounted or unmounted HTML elements.
 
-Fragment child elements are 'mounted' and 'unmounted' recursively in depth first order.
+#### `treetop.push({"tagName": "my-tag"})`
+
+Register a 'mount' and 'unmount' function for custom components. Elements are matching by either tagName or attrName. The mounting functions will be called by treetop during the course of replacing a region of the DOM.
+
+Fragment child elements are 'mounted' and 'unmounted' recursively in depth-first order.
 
 #### Usage
 ```
 (window.treetop = window.treetop || []).push({
-    tagName: "",
-    attrName: "",
+    tagName: "my-tag",
+    attrName: "my-attr",
     mount: (el) => {},
     unmount: (el) => {},
 })
@@ -84,15 +90,22 @@ Fragment child elements are 'mounted' and 'unmounted' recursively in depth first
 | mount             | *function  | Function accepting the HTMLElement as parameter |
 | unmount           | *function  | Function accepting the HTMLElement as parameter |
 
+_*optional_
 
-### `treetop.push` Composition
+### Composition Strategies
+
+When an updated HTML element is received, the standard behaviour is to immediately
+swap it in place with the old element. The 'compose' functionality allows developers
+to define a custom node update strategy.
+
+#### `treetop.push({"compose":  {...}})`
 
 Register a method for use in conjunction with `treetop-compose` attribute.
 
 #### Usage
 ```
 (window.treetop = window.treetop || []).push({
-    composition: {
+    compose: {
         "custom-compose": (next, prev) => {
             prev.parentNode.replaceChild(next, prev)
 
@@ -105,11 +118,18 @@ Register a method for use in conjunction with `treetop-compose` attribute.
 })
 ```
 
-_*optional_
+Now if a new element and old element have matching attributes, the registered compose function will be used. For example,
+```
+<!-- Old -->
+<div treetop-compose="custom-compose">...</div>
 
-### Browser support
+<!-- New -->
+<div treetop-compose="custom-compose">new content</div>
+```
 
-Backwards compatibility is a priority for the client library. It has been designed to rely on well supported APIs for the most part. However, you should use a HTML5 `history.pushState` shim to enable the the full navigation experience in legacy browsers.
+## Browser support
+
+Backwards compatibility is a priority for the client library. It has been designed to rely on well-supported APIs for the most part. However, you should use an HTML5 `history.pushState` shim to enable the full navigation experience in legacy browsers.
 
 __TODO: More browser testing is needed, please help!__
-
+ ~/code/treetop-client 
