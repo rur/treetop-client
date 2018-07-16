@@ -46,7 +46,7 @@ treetop.request("POST", "/some/path", "foo=bar", "application/x-www-form-urlenco
 ###  Client Library API
 
 ####  treetop.request
-Issue a treetop request. Notice that no callback mechanism is available. This is by design. Response handling is mandated by the protocol, see [Treetop Request](https://github.com/rur/treetop/blob/master/README.markdown#how-treetop-requests-work)
+Issue a treetop request. Notice that no callback mechanism is available by design. Response handling is mandated by the protocol, see [Treetop Request](https://github.com/rur/treetop/blob/master/README.markdown#how-treetop-requests-work).
 
 ##### Usage
 ```
@@ -57,9 +57,9 @@ treetop.request( [method], [url], [body], [contentType])
 
 | Param             | Type    | Details                                          |
 |-------------------|---------|--------------------------------------------------|
-| method            | string  | The HTTP request method to use                  |
+| method            | string  | The HTTP request method to use                   |
 | URL               | string  | The URL path                                     |
-| body              | *string | the request body encoded string                 |
+| body              | *string | the request body encoded string                  |
 | contentType       | *string | describe the encoding of the request body        |
 
 _*optional_
@@ -70,7 +70,7 @@ Treetop provides a hook for attaching custom JS to recently mounted or unmounted
 
 #### `treetop.push({"tagName": "my-tag"})`
 
-Register a 'mount' and 'unmount' function for custom components. Elements are matching by either tagName or attrName. The mounting functions will be called by treetop during the course of replacing a region of the DOM.
+Register a 'mount' and 'unmount' function for custom components. Elements are matched by either tagName or attrName. The mounting functions will be called by treetop during the course of replacing a region of the DOM.
 
 Fragment child elements are 'mounted' and 'unmounted' recursively in depth-first order.
 
@@ -97,9 +97,8 @@ _*optional_
 
 ### Composition Strategies
 
-When an updated HTML element is received, the standard behaviour is to immediately
-swap it in place with the old element. The 'compose' functionality allows developers
-to define a custom node update strategy.
+When a new HTML snipped is received and matched to an existing DOM node, the default behaviour is to synchronously
+swap the new element in, clobbering the old. The 'compose' functionality allows developers to define custom node update strategies.
 
 #### `treetop.push({"compose":  {...}})`
 
@@ -107,12 +106,13 @@ Register a method for use in conjunction with `treetop-compose` attribute.
 
 #### Usage
 ```
+/* define 'custom-compose' update strategy which is equivalent to default behaviour */
 (window.treetop = window.treetop || []).push({
     compose: {
         "custom-compose": (next, prev) => {
             prev.parentNode.replaceChild(next, prev)
 
-            // optional async component mounting
+            // optionally sync or async component mounting
             return (done) => {
                 done();
             }
@@ -121,13 +121,13 @@ Register a method for use in conjunction with `treetop-compose` attribute.
 })
 ```
 
-Now if a new element and old element have matching attributes, the registered compose function will be used. For example,
+Now when a new element and old element have matching attribute values, the custom compose function will be used. For example,
 ```
 <!-- Old -->
-<div treetop-compose="custom-compose">...</div>
+<div id="example" treetop-compose="custom-compose">...</div>
 
 <!-- New -->
-<div treetop-compose="custom-compose">new content</div>
+<div id="example" treetop-compose="custom-compose">new content</div>
 ```
 
 If these attribute values do not match for any reason, the library will fall back on the default 'replace in place' strategy.
