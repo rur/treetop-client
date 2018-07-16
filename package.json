@@ -1,0 +1,25 @@
+{
+  "name": "treetop-client",
+  "version": "0.1.0",
+  "description": "Browser client library for Treetop enabled web application",
+  "main": "treetop.js",
+  "scripts": {
+    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "jsdom": "^8.1.0",
+    "mocha": "^2.4.5",
+    "sinon": "^1.17.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rur/treetop-client.git"
+  },
+  "author": "Ruaidhri Devery <deveryr2@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rur/treetop-client/issues"
+  },
+  "homepage": "https://github.com/rur/treetop-client#readme"
+}
