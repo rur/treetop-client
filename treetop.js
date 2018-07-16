@@ -341,10 +341,10 @@ window.treetop = (function ($, config) {
         $.bindAttrName = $.index();
         for (i = 0; i < len; i++) {
             def = setup[i];
-            if (def.composition instanceof Object) {
-                for (var prop in def.composition) {
-                    if (def.composition.hasOwnProperty(prop) && typeof def.composition[prop] === "function") {
-                        $.composition[prop.toLowerCase()] = def.composition[prop];
+            if (def.compose instanceof Object) {
+                for (var prop in def.compose) {
+                    if (def.compose.hasOwnProperty(prop) && typeof def.compose[prop] === "function") {
+                        $.composition[prop.toLowerCase()] = def.compose[prop];
                     }
                 }
             } else {
