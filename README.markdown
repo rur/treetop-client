@@ -127,9 +127,10 @@ Now if a new element and old element have matching attributes, the registered co
 <div treetop-compose="custom-compose">new content</div>
 ```
 
+If these attribute values do not match for any reason, the library will fall back on the default 'replace in place' strategy.
+
 ## Browser support
 
 Backwards compatibility is a priority for the client library. It has been designed to rely on well-supported APIs for the most part. However, you should use an HTML5 `history.pushState` shim to enable the full navigation experience in legacy browsers.
 
 __TODO: More browser testing is needed, please help!__
- ~/code/treetop-client 
