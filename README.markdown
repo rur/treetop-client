@@ -8,15 +8,18 @@ The __treetop.js__ script must be sourced by the browser to enable in-page navig
 
 ## Client Library
 
-The client library exposes the `window.treetop` instance. The library provides the following features to your JS scripts:
+Sourcing the treetop client library does two things: 
+
+* Click, submit and keyboard event listeners are bound to the body element.
+* The `window.treetop` API instance is exposed.
+
+The library API provides the following features:
 
 * API to trigger Treetop requests.
 * Hooks for mounting & unmounting component code.
 * Configure how responses are handled.
 
-## Components
-
-#### The treetop HTML attribute
+## The "treetop" attribute
 
 The treetop attribute allows the behavior of anchors and forms to be hijacked, for example:
 
