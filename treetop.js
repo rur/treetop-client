@@ -275,16 +275,12 @@ window.treetop = (function ($, config) {
         for (i = 0; i < el.children.length; i++) {
             $.mount(el.children[i]);
         }
-        el._treetopComponents = (el._treetopComponents || []);
         comps = $.bindTagName.get(el.tagName);
         len = comps.length;
         for (i = 0; i < len; i++) {
             comp = comps[i];
-            if (comp && typeof comp.mount === "function" &&
-                (!(el._treetopComponents instanceof Array) || el._treetopComponents.indexOf(comp) === -1)
-            ) {
+            if (comp && typeof comp.mount === "function") {
                 comp.mount(el);
-                (el._treetopComponents = (el._treetopComponents || [])).push(comp);
             }
         }
         for (j = el.attributes.length - 1; j >= 0; j--) {
@@ -293,11 +289,8 @@ window.treetop = (function ($, config) {
             len = comps.length;
             for (i = 0; i < len; i++) {
                 comp = comps[i];
-                if (comp && typeof comp.mount === "function" &&
-                    (!(el._treetopComponents instanceof Array) || el._treetopComponents.indexOf(comp) === -1)
-                ) {
+                if (comp && typeof comp.mount === "function") {
                     comp.mount(el);
-                    (el._treetopComponents = (el._treetopComponents || [])).push(comp);
                 }
             }
         }
@@ -312,19 +305,29 @@ window.treetop = (function ($, config) {
     unmount: function (el) {
         "use strict";
         var $ = this;
-        var i, comp;
+        var i, len, j, comps, comp, attr;
         // TODO: do this with a stack not recursion
         for (i = 0; i < el.children.length; i++) {
             $.unmount(el.children[i]);
         }
-        if (el._treetopComponents instanceof Array) {
-            for (i = el._treetopComponents.length - 1; i >= 0; i--) {
-                comp = el._treetopComponents[i];
+        comps = $.bindTagName.get(el.tagName);
+        len = comps.length;
+        for (i = 0; i < len; i++) {
+            comp = comps[i];
+            if (comp && typeof comp.unmount === "function") {
+                comp.unmount(el);
+            }
+        }
+        for (j = el.attributes.length - 1; j >= 0; j--) {
+            attr = el.attributes[j];
+            comps = $.bindAttrName.get(attr.name);
+            len = comps.length;
+            for (i = 0; i < len; i++) {
+                comp = comps[i];
                 if (comp && typeof comp.unmount === "function") {
                     comp.unmount(el);
                 }
             }
-            el._treetopComponents = null;
         }
     },
 

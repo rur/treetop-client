@@ -177,12 +177,6 @@ describe('Treetop', function() {
 
     afterEach(() => document.body.removeChild(document.getElementById("test")));
 
-    it('should have mounted the body element', () => expect(document.body._treetopComponents).to.exist);
-
-    it('should have mounted the child element', function() {
-      expect(this.el._treetopComponents).to.eql([]);
-    });
-
     describe('when elements are replaced', function() {
       beforeEach(function() {
         treetop.request("GET", "/test");
@@ -198,16 +192,8 @@ describe('Treetop', function() {
         expect(this.el.parentNode).to.be.null;
       });
 
-      it('should unmount the existing element', function() {
-        expect(this.el._treetopComponents).to.be.null;
-      });
-
       it('should have inserted the new #test element', function() {
         expect(this.nue.tagName).to.equal("EM");
-      });
-
-      it('should mount the new element', function() {
-        expect(this.nue._treetopComponents).to.eql([]);
       });
     });
   });
