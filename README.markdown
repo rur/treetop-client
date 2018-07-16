@@ -41,7 +41,7 @@ treetop.request("POST", "/some/path", "foo=bar", "application/x-www-form-urlenco
 The client library exposes the `window.treetop` instance with the following methods:
 
 #### treetop.request
-Issue a treetop request. Notice that no callback mechanism is available. This is by design. Response handling is mandated by the protocol, see [Treetop Request](#Treetop+Request)
+Issue a treetop request. Notice that no callback mechanism is available. This is by design. Response handling is mandated by the protocol, see [Treetop Request](https://github.com/rur/treetop/blob/master/README.markdown#how-treetop-requests-work)
 
 ##### Usage
 ```
