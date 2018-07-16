@@ -3,8 +3,8 @@ const jsdom = require("jsdom");
 const sinon = require("sinon");
 
 const DEFAULT_HTML = "<html><head><title>Default Title</title></head><body></body></html>";
-global.document = jsdom.jsdom(DEFAULT_HTML);
-global.window = document.defaultView;
+const dom = new jsdom.JSDOM(DEFAULT_HTML)
+global.document = dom.window.document
+global.window = dom.window
 global.window.requestAnimationFrame = sinon.spy();
 global.window.cancelAnimationFrame = sinon.spy();
-global.navigator = window.navigator;

@@ -22,8 +22,8 @@ describe('Treetop', function() {
 
   afterEach(function() {
     this.xhr.restore();
-    window.requestAnimationFrame.reset();
-    window.cancelAnimationFrame.reset();
+    window.requestAnimationFrame.resetHistory();
+    window.cancelAnimationFrame.resetHistory();
   });
 
   describe('issue basic GET request', function() {
