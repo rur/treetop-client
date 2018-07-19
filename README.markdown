@@ -95,10 +95,11 @@ Fragment child elements are 'mounted' and 'unmounted' recursively in depth-first
 
 _*optional_
 
-### Composition Strategies
+### Treetop Compose
 
 When a new HTML snipped is received and matched to an existing DOM node, the default behaviour is to synchronously
-swap the new element in, clobbering the old. The 'compose' functionality allows developers to define custom node update strategies.
+swap the new element in, clobbering the old. The 'compose' functionality allows the developer to define a custom node update 
+strategy.
 
 #### `treetop.push({"compose":  {...}})`
 
@@ -111,26 +112,28 @@ Register a method for use in conjunction with `treetop-compose` attribute.
     compose: {
         "custom-compose": (next, prev) => {
             prev.parentNode.replaceChild(next, prev)
-
-            // optionally sync or async component mounting
-            return (done) => {
-                done();
+            return (doMount) => {
+                // optionally sync or async component unmounting + mounting
+                doMount();
             }
         }
     }
 })
 ```
+#### Matching compose attributes
 
-Now when a new element and old element have matching attribute values, the custom compose function will be used. For example,
+A new element and old element must have matching attribute values for the custom compose function to be used.
+If these attribute values do not match for any reason, the library will fall back on the default 'replace in place'
+strategy. For example,
+
 ```
 <!-- Old -->
-<div id="example" treetop-compose="custom-compose">...</div>
+<div id="example" treetop-compose="custom-compose">stale content</div>
 
 <!-- New -->
-<div id="example" treetop-compose="custom-compose">new content</div>
+<div id="example" treetop-compose="custom-compose">updated content</div>
 ```
 
-If these attribute values do not match for any reason, the library will fall back on the default 'replace in place' strategy.
 
 ## Browser support
 
