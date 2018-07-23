@@ -5,12 +5,12 @@ const chai = require('chai');
 const expect = chai.expect;
 
 
-describe('Treetop', function() {
+describe('Treetop', () => {
   'strict mode';
   var requests;
   var treetop;
 
-  beforeEach(function() {
+  beforeEach(() => {
     this.xhr = sinon.useFakeXMLHttpRequest();
     global.XMLHttpRequest = this.xhr;
     requests = [];
@@ -20,21 +20,21 @@ describe('Treetop', function() {
     window.requestAnimationFrame.lastCall.args[0]();
   });
 
-  afterEach(function() {
+  afterEach(() => {
     this.xhr.restore();
     window.requestAnimationFrame.resetHistory();
     window.cancelAnimationFrame.resetHistory();
   });
 
-  describe('issue basic GET request', function() {
+  describe('issue basic GET request', () => {
     var req = null;
-    beforeEach(function() {
+    beforeEach(() => {
       treetop.request("GET", "/test");
       req = requests[0];});
 
     it('should have issued a request', () => expect(req).to.exist);
 
-    it('should have issued a request with the method and url', function() {
+    it('should have issued a request with the method and url', () => {
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("GET");
     });
@@ -44,14 +44,14 @@ describe('Treetop', function() {
     it('should have no body', () => expect(req.requestBody).to.be.null);
   });
 
-  describe('issue basic POST request', function() {
+  describe('issue basic POST request', () => {
     var req = null;
-    beforeEach(function() {
+    beforeEach(() => {
       treetop.request("POST", "/test", "a=123&b=987", "application/x-www-form-urlencoded");
       req = requests[0];
     });
 
-    it('should have issued a request with right info', function() {
+    it('should have issued a request with right info', () => {
       expect(req).to.exist;
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("POST");
@@ -74,9 +74,9 @@ describe('Treetop', function() {
     )
   );
 
-  describe('replace indexed elements', function() {
+  describe('replace indexed elements', () => {
     var el = null;
-    beforeEach(function() {
+    beforeEach(() => {
       el = document.createElement("p");
       el.setAttribute("id", "test");
       el.textContent = "before!";
@@ -87,7 +87,7 @@ describe('Treetop', function() {
 
     it('should have appended the child', () => expect(el.parentNode.tagName).to.equal("BODY"));
 
-    it('should replace <p>before!</p> with <em>after!</em>', function() {
+    it('should replace <p>before!</p> with <em>after!</em>', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -97,7 +97,7 @@ describe('Treetop', function() {
       expect(document.body.textContent).to.equal("after!");
     });
 
-    it('should do nothing with an unmatched response', function() {
+    it('should do nothing with an unmatched response', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -108,15 +108,15 @@ describe('Treetop', function() {
     });
   });
 
-  describe('compose indexed elements', function() {
+  describe('compose indexed elements', () => {
     var el = null;
-    beforeEach(function() {
+    beforeEach(() => {
       el = document.createElement("ul");
       el.setAttribute("id", "test");
       el.setAttribute("treetop-compose", "test");
       el.innerHTML = "<li>1</li><li>2</li><li>3</li>";
       treetop.push({
-        "composition": {
+        "compose": {
           "test": (next, prev) => {
             Array.from(next.children).forEach(child => {
               prev.appendChild(child);
@@ -131,7 +131,7 @@ describe('Treetop', function() {
 
     it('should have appended the child', () => expect(el.parentNode.tagName).to.equal("BODY"));
 
-    it('should append items to the list', function() {
+    it('should append items to the list', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -141,7 +141,7 @@ describe('Treetop', function() {
       expect(document.body.textContent).to.equal("123456");
     });
 
-    it('should replace if compose method does not match', function() {
+    it('should replace if compose method does not match', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -155,7 +155,7 @@ describe('Treetop', function() {
 
   describe('replace singleton elements', () =>
 
-    it('should replace title tag', function() {
+    it('should replace title tag', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -166,8 +166,8 @@ describe('Treetop', function() {
     })
   );
 
-  describe('mounting and unmounting elements', function() {
-    beforeEach(function() {
+  describe('mounting and unmounting elements', () => {
+    beforeEach(() => {
       this.el = document.createElement("DIV");
       this.el.textContent = "Before!";
       this.el.setAttribute("id", "test");
@@ -177,8 +177,8 @@ describe('Treetop', function() {
 
     afterEach(() => document.body.removeChild(document.getElementById("test")));
 
-    describe('when elements are replaced', function() {
-      beforeEach(function() {
+    describe('when elements are replaced', () => {
+      beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
@@ -188,18 +188,18 @@ describe('Treetop', function() {
         return this.nue = document.getElementById('test');
       });
 
-      it('should remove the element from the DOM', function() {
+      it('should remove the element from the DOM', () => {
         expect(this.el.parentNode).to.be.null;
       });
 
-      it('should have inserted the new #test element', function() {
+      it('should have inserted the new #test element', () => {
         expect(this.nue.tagName).to.equal("EM");
       });
     });
   });
 
-  describe('binding components', function() {
-    beforeEach(function() {
+  describe('binding components', () => {
+    beforeEach(() => {
       this.el = document.createElement("test-node");
       this.el.setAttribute("id", "test");
       document.body.appendChild(this.el);
@@ -218,21 +218,21 @@ describe('Treetop', function() {
       window.requestAnimationFrame.lastCall.args[0]();
     });
 
-    afterEach(function() {
+    afterEach(() => {
       document.body.removeChild(document.getElementById("test"));
       document.body.removeChild(document.getElementById("test2"));
     });
 
-    it('should have called the mount on the element', function() {
+    it('should have called the mount on the element', () => {
       expect(this.component.mount.calledWith(this.el)).to.be.true;
     });
 
-    it('should have called the mount on the attribute', function() {
+    it('should have called the mount on the attribute', () => {
       expect(this.component.mount.calledWith(this.el2)).to.be.true;
     });
 
-    describe('when unmounted', function() {
-      beforeEach(function() {
+    describe('when unmounted', () => {
+      beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
@@ -241,18 +241,18 @@ describe('Treetop', function() {
         );
       });
 
-      it('should have called the unmount on the element', function() {
+      it('should have called the unmount on the element', () => {
         expect(this.component.unmount.calledWith(this.el)).to.be.true;
       });
 
-      it('should have called the unmount on the attribute', function() {
+      it('should have called the unmount on the attribute', () => {
         expect(this.component.unmount.calledWith(this.el2)).to.be.true;
       });
     });
   });
 
-  describe('binding two components', function() {
-    beforeEach(function() {
+  describe('binding two components', () => {
+    beforeEach(() => {
       this.el = document.createElement("test-node");
       this.el.setAttribute("id", "test");
       document.body.appendChild(this.el);
@@ -278,24 +278,24 @@ describe('Treetop', function() {
       window.requestAnimationFrame.lastCall.args[0]();
     });
 
-    afterEach(function() {
+    afterEach(() => {
       document.body.removeChild(document.getElementById("test"));
       document.body.removeChild(document.getElementById("test2"));
     });
 
-    it('should have called mount on component 1 for the tagName', function() {
+    it('should have called mount on component 1 for the tagName', () => {
       expect(this.component.mount.calledWith(this.el)).to.be.true;
     });
 
-    it('should have called mount on component 1 for the attrName', function() {
+    it('should have called mount on component 1 for the attrName', () => {
       expect(this.component.mount.calledWith(this.el2)).to.be.true;
     });
 
-    it('should have called mount on component 2 for the tagName', function() {
+    it('should have called mount on component 2 for the tagName', () => {
       expect(this.component2.mount.calledWith(this.el)).to.be.true;
     });
 
-    it('should have called mount on component 2 for the attrName', function() {
+    it('should have called mount on component 2 for the attrName', () => {
       expect(this.component2.mount.calledWith(this.el2)).to.be.true;
     });
   });
