@@ -30,7 +30,8 @@ describe('Treetop', () => {
     var req = null;
     beforeEach(() => {
       treetop.request("GET", "/test");
-      req = requests[0];});
+      req = requests[0];
+    });
 
     it('should have issued a request', () => expect(req).to.exist);
 
@@ -106,6 +107,77 @@ describe('Treetop', () => {
       );
       expect(document.body.textContent).to.equal("before!");
     });
+  });
+
+  describe('late arriving responses', () => {
+    beforeEach(() => {
+      var el = document.createElement("p");
+      el.setAttribute("id", "test");
+      el.textContent = "top!";
+      document.body.appendChild(el);
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = ""
+    });
+
+    it('should ignore a stale partial response', () => {
+      treetop.request("GET", "/test");
+      treetop.request("GET", "/test");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<em id="test">sooner!</em>'
+      );
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<em id="test">later!</em>'
+      );
+      expect(document.body.textContent).to.equal("sooner!");
+    });
+
+    it('should allow a late arriving update to unrelated part of the DOM', () => {
+      var el = document.createElement("p");
+      el.setAttribute("id", "test2");
+      el.textContent = "bottom!";
+      document.body.appendChild(el);
+      treetop.request("GET", "/test");
+      treetop.request("GET", "/test2");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
+        '<em id="test">sooner!</em>'
+      );
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
+        '<em id="test2">later!</em>'
+      );
+      expect(document.body.textContent).to.equal("sooner!later!");
+    });
+
+    it('should ignore stale updates to children of updated containers', () => {
+      var p = document.getElementById("test")
+      var sub = document.createElement("span")
+      sub.setAttribute("id", "test-sub")
+      sub.textContent = "Sub Content!"
+      p.appendChild(sub)
+      treetop.request("GET", "/test-sub");
+      treetop.request("GET", "/test");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
+        '<p id="test"><span id="test-sub">container!</span></p>'
+      );
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
+        '<em id="test-sub">child!</em>'
+      );
+      expect(document.body.textContent).to.equal("container!");
+    });
+
   });
 
   describe('compose indexed elements', () => {

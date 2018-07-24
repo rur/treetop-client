@@ -65,8 +65,9 @@ window.treetop = (function ($, config) {
         if (contentType) {
             req.setRequestHeader("content-type", contentType);
         }
+        var requestID = $.lastRequestID = $.lastRequestID + 1
         req.onload = function () {
-            $.xhrLoad(req, method);
+            $.xhrLoad(req, method, requestID);
             onLoad.trigger();
         };
         req.send(body || null);
@@ -114,6 +115,14 @@ window.treetop = (function ($, config) {
     bindAttrName: null,
 
     /**
+     * Track order of requests as well as the elements that were updated.
+     * This is necessary because under certain situations late arriving
+     * responses should be ignored.
+     */
+    lastRequestID: 0,
+    updates: {},
+
+    /**
      * Store the treetop composition definitions
      * @type {Object} object reference
      */
@@ -129,7 +138,7 @@ window.treetop = (function ($, config) {
      * List of HTML element for which there can be only one
      * @type {Array}
      */
-    SINGLETONS: {"TITLE": true},
+    SINGLETONS: {"TITLE": true, "BODY": true},
 
     /**
      * Content-Type for Treetop partials
@@ -154,8 +163,9 @@ window.treetop = (function ($, config) {
      *
      * @param {XMLHttpRequest} xhr The xhr instance used to make the request
      * @param {string} method HTTP method used
+     * @param {number} requestID The number of this request
      */
-    xhrLoad: function (xhr, method) {
+    xhrLoad: function (xhr, method, requestID) {
         "use strict";
         var $ = this;
         var i, len, temp, child, old, nodes;
@@ -189,24 +199,58 @@ window.treetop = (function ($, config) {
         for (i = 0, len = temp.children.length; i < len; i++) {
             nodes[i] = temp.children[i];
         }
-        node_loop:
-            for (i = 0, len = nodes.length; i < len; i++) {
-                child = nodes[i];
-                if ($.SINGLETONS[child.nodeName.toUpperCase()]) {
-                    old = document.getElementsByTagName(child.nodeName)[0];
-                    if (old) {
-                        $.compose(child, old);
-                        continue node_loop;
-                    }
-                }
-                if (child.id) {
-                    old = document.getElementById(child.id);
-                    if (old) {
-                        $.compose(child, old);
-                        continue node_loop;
-                    }
-                }
+        for (i = 0, len = nodes.length; i < len; i++) {
+            child = nodes[i];
+            if ($.SINGLETONS[child.nodeName.toUpperCase()]) {
+                old = document.getElementsByTagName(child.nodeName)[0];
+            } else if (child.id) {
+                old = document.getElementById(child.id);
+            } else {
+                old = null;
             }
+            // check that an existing node was found, and that this node
+            // has not already been updated by a more recent request
+            if (old && requestID >= $.getLastUpdate(old)) {
+                if (responseContentType == $.PARTIAL_CONTENT_TYPE ||
+                    child.tagName.toUpperCase() === "BODY")
+                {
+                    $.updates["BODY"] = requestID;
+                } else if (child.id) {
+                    $.updates["#" + child.id] = requestID;
+                }
+                $.compose(child, old);
+            }
+        }
+    },
+
+    /**
+     * Given a HTMLELement node attached to the DOM, this will
+     * the most recent update requestID for this node and all of its
+     * parent nodes.
+     *
+     * @param node (HTMLElement)
+     * @returns number: the most recent request ID that either this or one of
+     *                  its ancestor nodes were updated
+     */
+    getLastUpdate: function(node) {
+        var updatedID = 0;
+        var parentUpdate = 0;
+        if (node === document.body) {
+            if ("BODY" in this.updates) {
+                updatedID = this.updates["BODY"]
+            }
+            // dont descent further
+            return updatedID;
+        } else if (node.id && "#" + node.id in this.updates) {
+            updatedID = this.updates["#" + node.id]
+        }
+        if (node.parentNode) {
+            parentUpdate = this.getLastUpdate(node.parentNode)
+            if (parentUpdate > updatedID) {
+                return parentUpdate;
+            }
+        }
+        return updatedID;
     },
 
     /**
