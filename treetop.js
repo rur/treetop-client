@@ -1,7 +1,14 @@
-/* global window, document, XMLHttpRequest, ActiveXObject */
+/* global window, document, history, HTMLTemplateElement, XMLHttpRequest, ActiveXObject */
 
 window.treetop = (function ($, config) {
     "use strict";
+    // First check browser support for essential modern features
+    if (typeof window.HTMLTemplateElement === 'undefined') {
+            throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
+    }
+    if (!(window.history && typeof window.history.pushState === 'function')) {
+            throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
+    }
     var onLoad = $.simpleSignal();
 
     /**
@@ -138,7 +145,7 @@ window.treetop = (function ($, config) {
      * List of HTML element for which there can be only one
      * @type {Array}
      */
-    SINGLETONS: {"TITLE": true, "BODY": true},
+    SINGLETONS: {"TITLE": true},
 
     /**
      * Content-Type for Treetop partials
@@ -187,21 +194,23 @@ window.treetop = (function ($, config) {
             throw Error("Non-treetop response from URL: " + responseURL);
         }
 
-        if (responseContentType == $.PARTIAL_CONTENT_TYPE && window.history) {
+        if (responseContentType == $.PARTIAL_CONTENT_TYPE) {
+            // NOTE: This requires a polyfill for non HTML5 browsers
             window.history.pushState({
                 treetop: true,
             }, "", responseURL);
         }
 
-        temp = document.createElement("div");
+        // this will require a template element polyfil for non HTML5 browsers
+        var temp = document.createElement('template');
         temp.innerHTML = xhr.responseText;
-        nodes = new Array(temp.children.length);
-        for (i = 0, len = temp.children.length; i < len; i++) {
-            nodes[i] = temp.children[i];
+        nodes = new Array(temp.content.children.length);
+        for (i = 0, len = temp.content.children.length; i < len; i++) {
+            nodes[i] = temp.content.children[i];
         }
         for (i = 0, len = nodes.length; i < len; i++) {
             child = nodes[i];
-            if ($.SINGLETONS[child.nodeName.toUpperCase()]) {
+            if ($.SINGLETONS[child.tagName.toUpperCase()]) {
                 old = document.getElementsByTagName(child.nodeName)[0];
             } else if (child.id) {
                 old = document.getElementById(child.id);
@@ -211,9 +220,7 @@ window.treetop = (function ($, config) {
             // check that an existing node was found, and that this node
             // has not already been updated by a more recent request
             if (old && requestID >= $.getLastUpdate(old)) {
-                if (responseContentType == $.PARTIAL_CONTENT_TYPE ||
-                    child.tagName.toUpperCase() === "BODY")
-                {
+                if (responseContentType == $.PARTIAL_CONTENT_TYPE) {
                     $.updates["BODY"] = requestID;
                 } else if (child.id) {
                     $.updates["#" + child.id] = requestID;
@@ -505,7 +512,7 @@ window.treetop = (function ($, config) {
             },
             has: function (key) {
                 if (typeof key != "string" || key === "") {
-                    throw new Error("Index: invalid key (" + key + ")");
+                    return false;
                 }
                 var _key = ("_" + key).toUpperCase();
                 return _store.hasOwnProperty(_key);

@@ -109,6 +109,27 @@ describe('Treetop', () => {
     });
   });
 
+  describe('parse maformed responses', () => {
+    beforeEach(() => {
+      var el = document.createElement("p");
+      el.setAttribute("id", "test");
+      el.textContent = "before!";
+      document.body.appendChild(el);
+    });
+
+    afterEach(() => document.body.removeChild(document.getElementById("test")));
+
+    it('ignore test nodes', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        'TESTING'
+      );
+      expect(document.body.textContent).to.equal("before!");
+    });
+  });
+
   describe('late arriving responses', () => {
     beforeEach(() => {
       var el = document.createElement("p");
@@ -225,8 +246,7 @@ describe('Treetop', () => {
   });
 
 
-  describe('replace singleton elements', () =>
-
+  describe('Handle special cases of elements', () => {
     it('should replace title tag', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
@@ -236,7 +256,29 @@ describe('Treetop', () => {
       );
       expect(document.title).to.equal("New Title!");
     })
-  );
+
+    it('should not replace body tag', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<body>New Body!</body>'
+      );
+      expect(document.body.textContent).not.to.equal("Body!");
+    })
+
+    it('should handle dependent element types', () => {
+      // see http://www.ericvasilik.com/2006/07/code-karma.html
+      document.body.innerHTML = '<table><tr id="test-table"><td>OLD CELL</td></tr></table>'
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<tr id="test-table"><td>New Cell!</td></tr>'
+      );
+      expect(document.body.textContent).to.equal("New Cell!");
+    })
+  });
 
   describe('mounting and unmounting elements', () => {
     beforeEach(() => {
