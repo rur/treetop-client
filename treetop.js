@@ -9,7 +9,10 @@ window.treetop = (function ($, config) {
     if (!(window.history && typeof window.history.pushState === 'function')) {
             throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
     }
-    var onLoad = $.simpleSignal();
+    // Triggered when treetop receives a response that it cannot handle
+    // This generally means a non-treetop response was captured. The xhr instance
+    // will be passed to the signal handler.
+    var onUnsupported = $.simpleSignal();
 
     /**
      * Treetop API Constructor
@@ -74,13 +77,33 @@ window.treetop = (function ($, config) {
         }
         var requestID = $.lastRequestID = $.lastRequestID + 1
         req.onload = function () {
-            $.xhrLoad(req, method, requestID);
-            onLoad.trigger();
+            if (req.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
+                // this response is part of a larger page, add a history entry before processing
+                var responseURL = req.getResponseHeader("x-response-url") || req.responseURL;
+                // NOTE: This HTML5 feature will require a polyfill for some browsers
+                window.history.pushState({
+                    treetop: true,
+                }, "", responseURL);
+                $.xhrProcess(req, requestID, true);
+
+            } else if(req.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
+                // this is a fragment response, just process the update
+                $.xhrProcess(req, requestID, false);
+
+            } else if (req.getResponseHeader("x-treetop-see-other") != null) {
+                // Effectively a 303 See Other - Method set to GET and body is discarded
+                window.location = req.getResponseHeader("x-treetop-see-other");
+
+            } else {
+                // Fall through; this is not a response that treetop supports.
+                // Delegate to developer to handle and call it a day.
+                onUnsupported.trigger(req);
+            }
         };
         req.send(body || null);
     };
 
-    Treetop.prototype.onLoad = onLoad.add;
+    Treetop.prototype.onUnsupported = onUnsupported.add;
 
     /**
      * treetop.submit will trigger an XHR request derived from the state
@@ -169,39 +192,16 @@ window.treetop = (function ($, config) {
      * figure out how to attached them to the DOM
      *
      * @param {XMLHttpRequest} xhr The xhr instance used to make the request
-     * @param {string} method HTTP method used
      * @param {number} requestID The number of this request
+     * @param {boolean} isPagePartial Flag which will be true if the request response is part of a page
      */
-    xhrLoad: function (xhr, method, requestID) {
+    xhrProcess: function (xhr, requestID, isPagePartial) {
         "use strict";
         var $ = this;
         var i, len, temp, child, old, nodes;
         i = len = temp = child = old = nodes = undefined;
-        var responseContentType = xhr.getResponseHeader("content-type");
-        var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
-        if (responseContentType != $.PARTIAL_CONTENT_TYPE && responseContentType != $.FRAGMENT_CONTENT_TYPE) {
-            // TODO: Consider checking for 4xx and 5xx status and handle these responses differently
-            //       since the 'responseURL' may be a POST only or a treetop fragment route hence not accessible
-            //       the following way.
-            if (xhr.getResponseHeader("x-treetop-redirect") != null) {
-                if (method.toUpperCase() == "GET") {
-                    window.location = xhr.getResponseHeader("x-treetop-redirect");
-                    return;
-                } else {
-                    throw Error("Treetop client cannot redirect a non-GET request");
-                }
-            }
-            throw Error("Non-treetop response from URL: " + responseURL);
-        }
 
-        if (responseContentType == $.PARTIAL_CONTENT_TYPE) {
-            // NOTE: This requires a polyfill for non HTML5 browsers
-            window.history.pushState({
-                treetop: true,
-            }, "", responseURL);
-        }
-
-        // this will require a template element polyfil for non HTML5 browsers
+        // this will require a polyfil for browsers that do not support HTMLTemplateElement
         var temp = document.createElement('template');
         temp.innerHTML = xhr.responseText;
         nodes = new Array(temp.content.children.length);
@@ -220,7 +220,7 @@ window.treetop = (function ($, config) {
             // check that an existing node was found, and that this node
             // has not already been updated by a more recent request
             if (old && requestID >= $.getLastUpdate(old)) {
-                if (responseContentType == $.PARTIAL_CONTENT_TYPE) {
+                if (isPagePartial) {
                     $.updates["BODY"] = requestID;
                 } else if (child.id) {
                     $.updates["#" + child.id] = requestID;
