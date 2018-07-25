@@ -1,4 +1,13 @@
 
+
+## [0.4.0] - 2018-24-07
+### Changed
+
+- Create treetop.onUnsupported signal to permit request handing fall through.
+- Remove treetop.onUpdated signal what wasn't very useful after all.
+- Internal refactoring and tidy up
+
+
 ## [0.3.0] - 2018-23-07
 ### Changed
 
