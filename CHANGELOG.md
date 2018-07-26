@@ -1,5 +1,10 @@
 
 
+## [0.4.1] - 2018-25-07
+### Changed
+
+- Check for treetop redirect before processing any other aspect of the XHR response
+
 ## [0.4.0] - 2018-24-07
 ### Changed
 

@@ -77,7 +77,13 @@ window.treetop = (function ($, config) {
         }
         var requestID = $.lastRequestID = $.lastRequestID + 1
         req.onload = function () {
-            if (req.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
+            // check if the response can be processed by treetop client library,
+            // otherwise trigger 'onUnsupported' signal
+            if (req.getResponseHeader("x-treetop-see-other") != null) {
+                // Redirect browser window
+                window.location = req.getResponseHeader("x-treetop-see-other");
+
+            } else if (req.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
                 // this response is part of a larger page, add a history entry before processing
                 var responseURL = req.getResponseHeader("x-response-url") || req.responseURL;
                 // NOTE: This HTML5 feature will require a polyfill for some browsers
@@ -90,13 +96,9 @@ window.treetop = (function ($, config) {
                 // this is a fragment response, just process the update
                 $.xhrProcess(req, requestID, false);
 
-            } else if (req.getResponseHeader("x-treetop-see-other") != null) {
-                // Effectively a 303 See Other - Method set to GET and body is discarded
-                window.location = req.getResponseHeader("x-treetop-see-other");
-
             } else {
                 // Fall through; this is not a response that treetop supports.
-                // Delegate to developer to handle and call it a day.
+                // Allow developer to handle.
                 onUnsupported.trigger(req);
             }
         };
