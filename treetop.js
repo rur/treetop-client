@@ -2,6 +2,11 @@
 
 window.treetop = (function ($, config) {
     "use strict";
+    if (config && typeof config.treetopClientVersion === "string") {
+        // treetop is already defined, return it
+        return config;
+    }
+
     // First check browser support for essential modern features
     if (typeof window.HTMLTemplateElement === 'undefined') {
             throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
@@ -13,6 +18,7 @@ window.treetop = (function ($, config) {
     // This generally means a non-treetop response was captured. The xhr instance
     // will be passed to the signal handler.
     var onUnsupported = $.simpleSignal();
+    var onNetworkError = $.simpleSignal();
 
     /**
      * Treetop API Constructor
@@ -21,22 +27,31 @@ window.treetop = (function ($, config) {
      * @param {Array|Treetop} setup GA style initialization
      */
     function Treetop(setup) {
-        if (setup instanceof Treetop) {
-            this._setup = setup._setup;
-        } else if (setup instanceof Array) {
-            this._setup = setup;
+        if (setup instanceof Array) {
+            this._setup = setup.slice();
+        } else {
+            this._setup = [];
         }
         this._setup = (this._setup || []).slice();
-        $.bindComponentsAsync(this._setup);
     }
+
+    Treetop.prototype.treetopClientVersion = "[[TREETOP_VERSION]]";
 
     /**
      * Add a component definition
      * @param  {Object} def Dict containing component
      */
-    Treetop.prototype.push = function (def) {
-        if (def) this._setup.push(def);
-        $.bindComponentsAsync(this._setup);
+    Treetop.prototype.push = function () {
+        var defs = [], def;
+        for (var i = 0, len = arguments.length; i < len; i++) {
+            def = arguments[i];
+            if (!def) continue;
+            if (this._setup.indexOf(def) === -1) {
+                defs.push(def);
+                this._setup.push(def);
+            }
+        }
+        $.bindComponentsAsync(defs);
     };
 
     /**
@@ -69,43 +84,53 @@ window.treetop = (function ($, config) {
         if (!$.METHODS[method.toUpperCase()]) {
             throw new Error("Treetop: Unknown request method '" + method + "'");
         }
-        var req = (XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
-        req.open(method.toUpperCase(), url, true);
-        req.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
-        if (contentType) {
-            req.setRequestHeader("content-type", contentType);
+        var xhr = createXMLHTTPObject();
+        if (!xhr) {
+            throw new Error("Treetop: XHR is not supproted by this browser");
         }
         var requestID = $.lastRequestID = $.lastRequestID + 1
-        req.onload = function () {
+        xhr.open(method.toUpperCase(), url, true);
+        xhr.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
+        if (contentType) {
+            xhr.setRequestHeader("content-type", contentType);
+        }
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4 || xhr.status < 100) {
+                return
+            }
             // check if the response can be processed by treetop client library,
             // otherwise trigger 'onUnsupported' signal
-            if (req.getResponseHeader("x-treetop-see-other") != null) {
+            if (xhr.getResponseHeader("x-treetop-see-other") != null) {
                 // Redirect browser window
-                window.location = req.getResponseHeader("x-treetop-see-other");
+                window.location = xhr.getResponseHeader("x-treetop-see-other");
 
-            } else if (req.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
+            } else if (xhr.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
                 // this response is part of a larger page, add a history entry before processing
-                var responseURL = req.getResponseHeader("x-response-url") || req.responseURL;
+                var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
                 // NOTE: This HTML5 feature will require a polyfill for some browsers
                 window.history.pushState({
                     treetop: true,
                 }, "", responseURL);
-                $.xhrProcess(req, requestID, true);
+                $.xhrProcess(xhr, requestID, true);
 
-            } else if(req.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
+            } else if(xhr.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
                 // this is a fragment response, just process the update
-                $.xhrProcess(req, requestID, false);
+                $.xhrProcess(xhr, requestID, false);
 
             } else {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.
-                onUnsupported.trigger(req);
+                onUnsupported.trigger(xhr);
             }
         };
-        req.send(body || null);
+        xhr.onerror = function () {
+            onNetworkError.trigger(xhr);
+        };
+        xhr.send(body || null);
     };
 
     Treetop.prototype.onUnsupported = onUnsupported.add;
+    Treetop.prototype.onNetworkError = onNetworkError.add;
 
     /**
      * treetop.submit will trigger an XHR request derived from the state
@@ -127,6 +152,28 @@ window.treetop = (function ($, config) {
 
     Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
     Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
+
+    var XMLHttpFactories = [
+        function () {return new XMLHttpRequest()},
+        function () {return new ActiveXObject("Msxml2.XMLHTTP")},
+        function () {return new ActiveXObject("Msxml3.XMLHTTP")},
+        function () {return new ActiveXObject("Microsoft.XMLHTTP")}
+    ];
+
+    // see https://www.quirksmode.org/js/xmlhttp.html
+    function createXMLHTTPObject() {
+        var xmlhttp = false;
+        for (var i=0;i<XMLHttpFactories.length;i++) {
+            try {
+                xmlhttp = XMLHttpFactories[i]();
+            }
+            catch (e) {
+                continue;
+            }
+            break;
+        }
+        return xmlhttp;
+    }
 
     // api
     return new Treetop(config);
@@ -397,7 +444,11 @@ window.treetop = (function ($, config) {
         $.bindAttrName = $.index();
         for (i = 0; i < len; i++) {
             def = setup[i];
-            if (def.compose instanceof Object) {
+            if (!def) {
+                continue;
+            } else if (typeof def === "function") {
+                def();  // init function
+            } else if (def.compose instanceof Object) {
                 for (var prop in def.compose) {
                     if (def.compose.hasOwnProperty(prop) && typeof def.compose[prop] === "function") {
                         $.composition[prop.toLowerCase()] = def.compose[prop];
@@ -542,11 +593,27 @@ window.treetop = (function ($, config) {
             trigger: function () {
                 for (var i = 0; i < listeners.length; i++) {
                     if (typeof listeners[i] === "function") {
-                        listeners[i]();
-                    }
+                        switch (arguments.length) {
+                        case 0:
+                           listeners[i]();
+                           break;
+                        case 1:
+                           listeners[i](arguments[0]);
+                           break;
+                        case 2:
+                           listeners[i](arguments[0], arguments[1]);
+                           break;
+                        case 3:
+                           listeners[i](arguments[0], arguments[1], arguments[2]);
+                           break;
+                        default:
+                           listeners[i].apply(null, arguments);
+                           break;
+                      }
+                   }
                 }
             }
-        };
+        }
     },
 
     FormSerializer: (function () {
