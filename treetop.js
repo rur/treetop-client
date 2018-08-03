@@ -1,18 +1,18 @@
 /* global window, document, history, HTMLTemplateElement, XMLHttpRequest, ActiveXObject */
 
-window.treetop = (function ($) {
+window.treetop = (function ($, BodyComponent, FormSerializer) {
     "use strict";
     if (window.treetop !== void 0) {
         // throwing an error here is important since it prevents window.treetop from being reassigned
-        throw Error("treetop global is already defined")
+        throw Error("Treetop: treetop global is already defined")
     }
 
     // First check browser support for essential modern features
     if (typeof window.HTMLTemplateElement === 'undefined') {
-        throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
+        throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
     if (!(window.history && typeof window.history.pushState === 'function')) {
-        throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
+        throw Error("Treetop: HTML5 History API not supported, a polyfil should be used");
     }
     // Triggered when treetop receives a response that it cannot handle
     // This generally means a non-treetop response was captured. The xhr instance
@@ -36,16 +36,17 @@ window.treetop = (function ($) {
      *                  called previously
      */
     Treetop.prototype.init = function (_config) {
-        // Since the client is stateful, mounting is not a
+        // Since the DOM is stateful, mounting is not a
         // reversible operation. It is crucial therefore that
         // the initial setup process only ever happens once during
         // the lifetime of a page. After that elements will only
-        // be mounted (and unmounted) when being attached or detached
+        // be mounted and unmounted when being attached or detached
         // from the DOM.
         if (initCalled) {
             throw Error("Treetop: init has already been called");
         }
         var config = _config instanceof Object ? _config : {};
+        var extendDefault;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -79,6 +80,7 @@ window.treetop = (function ($) {
                 break;
             case "extendsdefault":
             case "extenddefault":
+                extendDefault = !(config[key] === false);
                 continue;
             default:
                 throw new Error(
@@ -87,18 +89,20 @@ window.treetop = (function ($) {
             }
         }
 
-        if (config.extendDefault !== false ||
-            config.extendsDefault !== false
-        ) {
+        if (extendDefault) {
             // apply default components
-            $.mountTags["body"] = $.treetopAttribute["mount"];
-            // NOTE: realistically, this will never be 'unmounted', this
+            $.mountTags["body"] = BodyComponent.mount;
+            // NOTE: realistically, body will never be 'unmounted', this
             // should not be necessary.
-            $.unmountTags["body"] = $.treetopAttribute["unmount"];
+            $.unmountTags["body"] = BodyComponent.unmount;
         }
 
         // point of no return
         $.mount(document.body);
+        window.onpopstate = function (_evt) {
+            var evt = _evt || window.event;
+            $.browserPopState(evt);
+        };
     };
 
 
@@ -176,14 +180,14 @@ window.treetop = (function ($) {
                 );
             }, 0);
         }
-        new $.FormSerializer(formElement, dataHandler);
+        new FormSerializer(formElement, dataHandler);
     }
 
     // api
     return new Treetop();
 }({
     //
-    // Private
+    // Treetop Internal
     //
     /**
      * Store configuration
@@ -278,6 +282,18 @@ window.treetop = (function ($) {
             }
         }
     },
+
+    /**
+     * document history pop state event handler
+     *
+     * @param {PopStateEvent} e
+     */
+    browserPopState: function () {
+        "use strict";
+        // force browser to refresh the page when the back
+        // nav is triggered, seems to be the best thing to do
+        location.reload();
+    }
 
     /**
      * Given a HTMLELement node attached to the DOM, this will
@@ -430,14 +446,13 @@ window.treetop = (function ($) {
         }
     },
 
+    // see https://www.quirksmode.org/js/xmlhttp.html
     XMLHttpFactories: [
         function () {return new XMLHttpRequest()},
         function () {return new ActiveXObject("Msxml2.XMLHTTP")},
         function () {return new ActiveXObject("Msxml3.XMLHTTP")},
         function () {return new ActiveXObject("Microsoft.XMLHTTP")}
     ],
-
-    // see https://www.quirksmode.org/js/xmlhttp.html
     createXMLHTTPObject: function() {
         var xmlhttp = false;
         for (var i = 0; i < this.XMLHttpFactories.length; i++) {
@@ -495,203 +510,7 @@ window.treetop = (function ($) {
         }
     },
 
-    FormSerializer: (function () {
-        "use strict";
-        /**
-         * techniques:
-         */
-        var URLEN_GET = 0;   // GET method
-        var URLEN_POST = 1;  // POST method, enctype is application/x-www-form-urlencoded (default)
-        var PLAIN_POST = 2;  // POST method, enctype is text/plain
-        var MULTI_POST = 3;  // POST method, enctype is multipart/form-data
 
-        /**
-         * @private
-         * @constructor
-         * @param {FormElement}   elm       The form to be serialized
-         * @param {Function}      callback  Called when the serialization is complete (may be sync or async)
-         */
-        function FormSerializer(elm, callback) {
-            if (!(this instanceof FormSerializer)) {
-                return new FormSerializer(elm, callback);
-            }
-
-            var nFile, sFieldType, oField, oSegmReq, oFile;
-            var bIsPost = elm.method.toLowerCase() === "post";
-            var fFilter = window.encodeURIComponent;
-
-            this.onRequestReady = callback;
-            this.receiver = elm.action;
-            this.status = 0;
-            this.segments = [];
-
-            if (bIsPost) {
-                this.contentType = elm.enctype ? elm.enctype : "application\/x-www-form-urlencoded";
-                switch (this.contentType) {
-                case "multipart\/form-data":
-                    this.technique = MULTI_POST;
-
-                    try {
-                        // ...to let FormData do all the work
-                        this.data = new window.FormData(elm);
-                        if (this.data) {
-                            this.processStatus();
-                            return;
-                        }
-                    } catch (_) {
-                        "pass";
-                    }
-
-                    break;
-
-                case "text\/plain":
-                    this.technique = PLAIN_POST;
-                    fFilter = plainEscape;
-                    break;
-
-                default:
-                    this.technique = URLEN_POST;
-                }
-            } else {
-                this.technique = URLEN_GET;
-            }
-
-            for (var i = 0, len = elm.elements.length; i < len; i++) {
-                oField = elm.elements[i];
-                if (!oField.hasAttribute("name")) { continue; }
-                sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? oField.getAttribute("type").toUpperCase() : "TEXT";
-                if (sFieldType === "FILE" && oField.files.length > 0) {
-                    if (this.technique === MULTI_POST) {
-                        if (!window.FileReader) {
-                            throw new Error("Operation not supported: cannot upload a document via AJAX if FileReader is not supported");
-                        }
-                        /* enctype is multipart/form-data */
-                        for (nFile = 0; nFile < oField.files.length; nFile++) {
-                            oFile = oField.files[nFile];
-                            oSegmReq = new window.FileReader();
-                            oSegmReq.onload = this.fileReadHandler(oField, oFile);
-                            oSegmReq.readAsBinaryString(oFile);
-                        }
-                    } else {
-                        /* enctype is application/x-www-form-urlencoded or text/plain or method is GET: files will not be sent! */
-                        for (nFile = 0; nFile < oField.files.length; this.segments.push(fFilter(oField.name) + "=" + fFilter(oField.files[nFile++].name)));
-                    }
-                } else if ((sFieldType !== "RADIO" && sFieldType !== "CHECKBOX") || oField.checked) {
-                    /* field type is not FILE or is FILE but is empty */
-                    this.segments.push(
-                        this.technique === MULTI_POST ? /* enctype is multipart/form-data */
-                            "Content-Disposition: form-data; name=\"" + oField.name + "\"\r\n\r\n" + oField.value + "\r\n"
-                        : /* enctype is application/x-www-form-urlencoded or text/plain or method is GET */
-                            fFilter(oField.name) + "=" + fFilter(oField.value)
-                    );
-                }
-            }
-            this.processStatus();
-        }
-
-        /**
-         * Create FileReader onload handler
-         *
-         * @return {function}
-         */
-        FormSerializer.prototype.fileReadHandler = function (field, file) {
-            var self = this;
-            var index = self.segments.length;
-            self.segments.push(
-                "Content-Disposition: form-data; name=\"" + field.name + "\"; " +
-                "filename=\""+ file.name + "\"\r\n" +
-                "Content-Type: " + file.type + "\r\n\r\n");
-            self.status++;
-            return function (oFREvt) {
-                self.segments[index] += oFREvt.target.result + "\r\n";
-                self.status--;
-                self.processStatus();
-            };
-        };
-
-        /**
-         * Is called when a pass of serialization has completed.
-         *
-         * It will be called asynchronously if file reading is taking place.
-         */
-        FormSerializer.prototype.processStatus = function () {
-            if (this.status > 0) { return; }
-            /* the form is now totally serialized! prepare the data to be sent to the server... */
-            var sBoundary, method, url, hash, data, enctype;
-
-            switch (this.technique) {
-            case URLEN_GET:
-                method = "GET";
-                url = this.receiver.split("#");
-                hash = url.length > 1 ? "#" + url.splice(1).join("#") : "";  // preserve the hash
-                url = url[0].replace(/(?:\?.*)?$/, this.segments.length > 0 ? "?" + this.segments.join("&") : "") + hash;
-                data = null;
-                enctype = null;
-                break;
-
-            case URLEN_POST:
-            case PLAIN_POST:
-                method = "POST";
-                url = this.receiver;
-                enctype =  this.contentType;
-                data  = this.segments.join(this.technique === PLAIN_POST ? "\r\n" : "&");
-                break;
-
-            case MULTI_POST:
-                method = "POST";
-                url = this.receiver;
-                if (this.data) {
-                    // use native FormData multipart data
-                    data = this.data;
-                    enctype = null;
-                } else {
-                    // construct serialized multipart data manually
-                    sBoundary = "---------------------------" + Date.now().toString(16);
-                    enctype = "multipart\/form-data; boundary=" + sBoundary;
-                    data = "--" + sBoundary + "\r\n" + this.segments.join("--" + sBoundary + "\r\n") + "--" + sBoundary + "--\r\n";
-                    if (window.Uint8Array) {
-                        data = createArrayBuffer(data);
-                    }
-                }
-                break;
-            }
-
-            this.onRequestReady({
-                method: method,
-                action: url,
-                data: data,
-                enctype: enctype
-            });
-        };
-
-        /**
-         * Used to escape strings for encoding text/plain
-         *
-         * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
-         *
-         * @param  {stirng} sText
-         * @return {string}
-         */
-        function plainEscape(sText) {
-            return sText.replace(/[\s\=\\]/g, "\\$&");
-        }
-
-        /**
-         * @param  {string} str
-         * @return {ArrayBuffer}
-         */
-        function createArrayBuffer(str) {
-            var nBytes = str.length;
-            var ui8Data = new window.Uint8Array(nBytes);
-            for (var i = 0; i < nBytes; i++) {
-                ui8Data[i] = str.charCodeAt(i) & 0xff;
-            }
-            return ui8Data;
-        }
-
-        return FormSerializer;
-    }()),
-    
     /**
      * utility to update target dict with config. Keys are case insensitive
      * and values must be functions
@@ -708,154 +527,333 @@ window.treetop = (function ($) {
         }
     },
 
+}, (function ($) {
+    "use strict";
+
     /**
-     * This is the implementation of the 'treetop' attributes for overloading
+     * This is the implementation of the 'treetop' attributes what can be used to overload
      * html anchors and form elements. It works by registering event handlers on
      * the body element.
      *
      * @type {Object} dictionary with 'mount' and 'unmount' function
      *
      */
-    bodyComponent: (function ($) {
+    // handlers:
+    function documentClick(_evt) {
+        var evt = _evt || window.event;
+        var elm = _evt.target || _evt.srcElement;
+        while (elm.tagName.toUpperCase() !== "A") {
+            if (elm.parentElement) {
+                elm = elm.parentElement;
+            } else {
+                return; // this is not an anchor click
+            }
+        }
+        $.anchorClicked(evt, elm);
+    }
+
+    function updateModifiers(_kevt) {
+        var kevt = _kevt || window.event;
+        $.shiftKey =  kevt.shiftKey;
+        $.ctrlKey =  kevt.ctrlKey;
+        $.metaKey =  kevt.metaKey;
+    }
+
+    function onSubmit(_evt) {
+        var evt = _evt || window.event;
+        var elm = _evt.target || _evt.srcElement;
+        $.formSubmit(evt, elm);
+    }
+
+    /**
+     * treetop event delegation component definition
+     */
+    return {
+        mount: function (el) {
+            if (el.addEventListener) {
+                el.addEventListener("click", documentClick, false);
+                el.addEventListener("submit", onSubmit, false);
+                el.addEventListener("keydown", updateModifiers, false);
+                el.addEventListener("keyup", updateModifiers, false);
+            } else if (el.attachEvent) {
+                el.attachEvent("onclick", documentClick);
+                el.attachEvent("onsubmit", onSubmit);
+                el.attachEvent("onkeydown", updateModifiers);
+                el.attachEvent("onkeyup", updateModifiers);
+            } else {
+                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
+            }
+        },
+        unmount: function (el) {
+            if (el.removeEventListener) {
+                el.removeEventListener("click", documentClick);
+                el.removeEventListener("submit", onSubmit);
+                el.removeEventListener("keydown", updateModifiers);
+                el.removeEventListener("keyup", updateModifiers);
+            } else if (el.detachEvent) {
+                el.detachEvent("onclick", documentClick);
+                el.detachEvent("onsubmit", onSubmit);
+                el.detachEvent("onkeydown", updateModifiers);
+                el.detachEvent("onkeyup", updateModifiers);
+            }
+        }
+    };
+}({
+    //
+    // Body Component internal state
+    //
+
+    // track modifier key state
+    shiftKey: false,
+    ctrlKey: false,
+    metaKey: false,
+
+    /**
+     * document submit event handler
+     *
+     * @param {Event} evt
+     */
+    anchorClicked: function (evt, elm) {
         "use strict";
+        if (this.shiftKey || this.ctrlKey || this.metaKey ||
+            (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
+        ) {
+            // Use default browser behaviour when a modifier key is pressed
+            // or treetop has been explicity disabled
+            return
+        }
+        if (elm.hasAttribute("treetop-link")) {
+            // 'treetop-link' attribute can be used as an alternative to 'href' attribute.
+            // This is useful when default 'href' behavior is undesirable.
+            evt.preventDefault();
+            window.treetop.request("GET", elm.getAttribute("treetop-link"));
+            return false;
+        } else if (elm.href && elm.hasAttribute("treetop")) {
+            // hijack standard link click, extract href of link and
+            // trigger a Treetop XHR request instead
+            evt.preventDefault();
+            window.treetop.request("GET", elm.href);
+            return false;
+        }
+    },
 
-        // handlers:
-        function documentClick(_evt) {
-            var evt = _evt || window.event;
-            var elm = _evt.target || _evt.srcElement;
-            while (elm.tagName.toUpperCase() !== "A") {
-                if (elm.parentElement) {
-                    elm = elm.parentElement;
-                } else {
-                    return; // this is not an anchor click
+    /**
+     * document submit event handler
+     *
+     * @param {Event} evt
+     */
+    formSubmit: function (evt, elm) {
+        "use strict";
+        if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
+            evt.preventDefault();
+
+            // Serialize HTML form including file inputs and trigger a treetop request.
+            // The request will be executed asynchronously.
+            // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
+            window.treetop.submit(elm);
+
+            return false;
+        }
+    },
+
+})),
+/**
+ * FormSerializer library is used to convert HTML Form data for use in XMLHTTPRequests
+ */
+(function () {
+    "use strict";
+    /**
+     * techniques:
+     */
+    var URLEN_GET = 0;   // GET method
+    var URLEN_POST = 1;  // POST method, enctype is application/x-www-form-urlencoded (default)
+    var PLAIN_POST = 2;  // POST method, enctype is text/plain
+    var MULTI_POST = 3;  // POST method, enctype is multipart/form-data
+
+    /**
+     * @private
+     * @constructor
+     * @param {FormElement}   elm       The form to be serialized
+     * @param {Function}      callback  Called when the serialization is complete (may be sync or async)
+     */
+    function FormSerializer(elm, callback) {
+        if (!(this instanceof FormSerializer)) {
+            return new FormSerializer(elm, callback);
+        }
+
+        var nFile, sFieldType, oField, oSegmReq, oFile;
+        var bIsPost = elm.method.toLowerCase() === "post";
+        var fFilter = window.encodeURIComponent;
+
+        this.onRequestReady = callback;
+        this.receiver = elm.action;
+        this.status = 0;
+        this.segments = [];
+
+        if (bIsPost) {
+            this.contentType = elm.enctype ? elm.enctype : "application\/x-www-form-urlencoded";
+            switch (this.contentType) {
+            case "multipart\/form-data":
+                this.technique = MULTI_POST;
+
+                try {
+                    // ...to let FormData do all the work
+                    this.data = new window.FormData(elm);
+                    if (this.data) {
+                        this.processStatus();
+                        return;
+                    }
+                } catch (_) {
+                    "pass";
                 }
+
+                break;
+
+            case "text\/plain":
+                this.technique = PLAIN_POST;
+                fFilter = plainEscape;
+                break;
+
+            default:
+                this.technique = URLEN_POST;
             }
-            $.anchorClicked(evt, elm);
+        } else {
+            this.technique = URLEN_GET;
         }
 
-        function updateModifiers(_kevt) {
-            var kevt = _kevt || window.event;
-            $.shiftKey =  kevt.shiftKey;
-            $.ctrlKey =  kevt.ctrlKey;
-            $.metaKey =  kevt.metaKey;
-        }
-
-        function onSubmit(_evt) {
-            var evt = _evt || window.event;
-            var elm = _evt.target || _evt.srcElement;
-            $.formSubmit(evt, elm);
-        }
-
-        function onPopState(_evt) {
-            var evt = _evt || window.event;
-            $.browserPopState(evt);
-        }
-
-        /**
-         * treetop event delegation component definition
-         */
-        return {
-            mount: function (el) {
-                if (el.addEventListener) {
-                    el.addEventListener("click", documentClick, false);
-                    el.addEventListener("submit", onSubmit, false);
-                    el.addEventListener("keydown", updateModifiers, false);
-                    el.addEventListener("keyup", updateModifiers, false);
-                } else if (el.attachEvent) {
-                    el.attachEvent("onclick", documentClick);
-                    el.attachEvent("onsubmit", onSubmit);
-                    el.attachEvent("onkeydown", updateModifiers);
-                    el.attachEvent("onkeyup", updateModifiers);
+        for (var i = 0, len = elm.elements.length; i < len; i++) {
+            oField = elm.elements[i];
+            if (!oField.hasAttribute("name")) { continue; }
+            sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? oField.getAttribute("type").toUpperCase() : "TEXT";
+            if (sFieldType === "FILE" && oField.files.length > 0) {
+                if (this.technique === MULTI_POST) {
+                    if (!window.FileReader) {
+                        throw new Error("Operation not supported: cannot upload a document via AJAX if FileReader is not supported");
+                    }
+                    /* enctype is multipart/form-data */
+                    for (nFile = 0; nFile < oField.files.length; nFile++) {
+                        oFile = oField.files[nFile];
+                        oSegmReq = new window.FileReader();
+                        oSegmReq.onload = this.fileReadHandler(oField, oFile);
+                        oSegmReq.readAsBinaryString(oFile);
+                    }
                 } else {
-                    throw new Error("Treetop Events: Event delegation is not supported in this browser!");
+                    /* enctype is application/x-www-form-urlencoded or text/plain or method is GET: files will not be sent! */
+                    for (nFile = 0; nFile < oField.files.length; this.segments.push(fFilter(oField.name) + "=" + fFilter(oField.files[nFile++].name)));
                 }
-                window.onpopstate = onPopState;
-            },
-            unmount: function (el) {
-                if (el.removeEventListener) {
-                    el.removeEventListener("click", documentClick);
-                    el.removeEventListener("submit", onSubmit);
-                    el.removeEventListener("keydown", updateModifiers);
-                    el.removeEventListener("keyup", updateModifiers);
-                } else if (el.detachEvent) {
-                    el.detachEvent("onclick", documentClick);
-                    el.detachEvent("onsubmit", onSubmit);
-                    el.detachEvent("onkeydown", updateModifiers);
-                    el.detachEvent("onkeyup", updateModifiers);
-                }
-                if(window.onpopstate === onPopState) {
-                    window.onpopstate = null;
-                }
+            } else if ((sFieldType !== "RADIO" && sFieldType !== "CHECKBOX") || oField.checked) {
+                /* field type is not FILE or is FILE but is empty */
+                this.segments.push(
+                    this.technique === MULTI_POST ? /* enctype is multipart/form-data */
+                        "Content-Disposition: form-data; name=\"" + oField.name + "\"\r\n\r\n" + oField.value + "\r\n"
+                    : /* enctype is application/x-www-form-urlencoded or text/plain or method is GET */
+                        fFilter(oField.name) + "=" + fFilter(oField.value)
+                );
             }
+        }
+        this.processStatus();
+    }
+
+    /**
+     * Create FileReader onload handler
+     *
+     * @return {function}
+     */
+    FormSerializer.prototype.fileReadHandler = function (field, file) {
+        var self = this;
+        var index = self.segments.length;
+        self.segments.push(
+            "Content-Disposition: form-data; name=\"" + field.name + "\"; " +
+            "filename=\""+ file.name + "\"\r\n" +
+            "Content-Type: " + file.type + "\r\n\r\n");
+        self.status++;
+        return function (oFREvt) {
+            self.segments[index] += oFREvt.target.result + "\r\n";
+            self.status--;
+            self.processStatus();
         };
-    }({
-        //
-        // Default Component Private
-        //
+    };
 
-        // track modifier key state
-        shiftKey: false,
-        ctrlKey: false,
-        metaKey: false,
+    /**
+     * Is called when a pass of serialization has completed.
+     *
+     * It will be called asynchronously if file reading is taking place.
+     */
+    FormSerializer.prototype.processStatus = function () {
+        if (this.status > 0) { return; }
+        /* the form is now totally serialized! prepare the data to be sent to the server... */
+        var sBoundary, method, url, hash, data, enctype;
 
-        /**
-         * document submit event handler
-         *
-         * @param {Event} evt
-         */
-        anchorClicked: function (evt, elm) {
-            "use strict";
-            if (this.shiftKey || this.ctrlKey || this.metaKey ||
-                (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
-            ) {
-                // Use default browser behaviour when a modifier key is pressed
-                // or treetop has been explicity disabled
-                return
+        switch (this.technique) {
+        case URLEN_GET:
+            method = "GET";
+            url = this.receiver.split("#");
+            hash = url.length > 1 ? "#" + url.splice(1).join("#") : "";  // preserve the hash
+            url = url[0].replace(/(?:\?.*)?$/, this.segments.length > 0 ? "?" + this.segments.join("&") : "") + hash;
+            data = null;
+            enctype = null;
+            break;
+
+        case URLEN_POST:
+        case PLAIN_POST:
+            method = "POST";
+            url = this.receiver;
+            enctype =  this.contentType;
+            data  = this.segments.join(this.technique === PLAIN_POST ? "\r\n" : "&");
+            break;
+
+        case MULTI_POST:
+            method = "POST";
+            url = this.receiver;
+            if (this.data) {
+                // use native FormData multipart data
+                data = this.data;
+                enctype = null;
+            } else {
+                // construct serialized multipart data manually
+                sBoundary = "---------------------------" + Date.now().toString(16);
+                enctype = "multipart\/form-data; boundary=" + sBoundary;
+                data = "--" + sBoundary + "\r\n" + this.segments.join("--" + sBoundary + "\r\n") + "--" + sBoundary + "--\r\n";
+                if (window.Uint8Array) {
+                    data = createArrayBuffer(data);
+                }
             }
-            if (elm.hasAttribute("treetop-link")) {
-                // 'treetop-link' attribute can be used as an alternative to 'href' attribute.
-                // This is useful when default 'href' behavior is undesirable.
-                evt.preventDefault();
-                window.treetop.request("GET", elm.getAttribute("treetop-link"));
-                return false;
-            } else if (elm.href && elm.hasAttribute("treetop")) {
-                // hijack standard link click, extract href of link and
-                // trigger a Treetop XHR request instead
-                evt.preventDefault();
-                window.treetop.request("GET", elm.href);
-                return false;
-            }
-        },
-
-        /**
-         * document submit event handler
-         *
-         * @param {Event} evt
-         */
-        formSubmit: function (evt, elm) {
-            "use strict";
-            if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
-                evt.preventDefault();
-
-                // Serialize HTML form including file inputs and trigger a treetop request.
-                // The request will be executed asynchronously.
-                // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
-                window.treetop.submit(elm);
-
-                return false;
-            }
-        },
-
-        /**
-         * document history pop state event handler
-         *
-         * @param {PopStateEvent} e
-         */
-        browserPopState: function () {
-            "use strict";
-            // force browser to refresh the page when the back
-            // nav is triggered, seems to be the best thing to do
-            location.reload();
+            break;
         }
-    }))
+
+        this.onRequestReady({
+            method: method,
+            action: url,
+            data: data,
+            enctype: enctype
+        });
+    };
+
+    /**
+     * Used to escape strings for encoding text/plain
+     *
+     * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
+     *
+     * @param  {stirng} sText
+     * @return {string}
+     */
+    function plainEscape(sText) {
+        return sText.replace(/[\s\=\\]/g, "\\$&");
+    }
+
+    /**
+     * @param  {string} str
+     * @return {ArrayBuffer}
+     */
+    function createArrayBuffer(str) {
+        var nBytes = str.length;
+        var ui8Data = new window.Uint8Array(nBytes);
+        for (var i = 0; i < nBytes; i++) {
+            ui8Data[i] = str.charCodeAt(i) & 0xff;
+        }
+        return ui8Data;
+    }
+
+    return FormSerializer;
+}())
 }));
