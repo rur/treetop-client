@@ -1,68 +1,106 @@
 /* global window, document, history, HTMLTemplateElement, XMLHttpRequest, ActiveXObject */
 
-window.treetop = (function ($, config) {
+window.treetop = (function ($) {
     "use strict";
     if (window.treetop !== void 0) {
-      // throwing an error here is useful since it prevents window.treetop from being
-      // reassigned
-      throw Error("treetop global is already defined")
+        // throwing an error here is important since it prevents window.treetop from being reassigned
+        throw Error("treetop global is already defined")
     }
 
     // First check browser support for essential modern features
     if (typeof window.HTMLTemplateElement === 'undefined') {
-            throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
+        throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
     }
     if (!(window.history && typeof window.history.pushState === 'function')) {
-            throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
+        throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
     }
     // Triggered when treetop receives a response that it cannot handle
     // This generally means a non-treetop response was captured. The xhr instance
     // will be passed to the signal handler.
     var onUnsupported = $.simpleSignal();
     var onNetworkError = $.simpleSignal();
+    var initCalled = false;
 
     /**
      * Treetop API Constructor
      *
      * @constructor
-     * @param {Array|Treetop} setup GA style initialization
      */
-    function Treetop(setup) {
-        this._setup = (setup || []).slice();
-    }
+    function Treetop() {}
 
     /**
-     * Add a component definition
-     * @param  {Object} def Dict containing component
+     * Configure treetop and mount document.body
+     *
+     * @param  {Object} def Dict containing complete page configuration.
+     * @throws  {Error} If a config key isn't recognized or `init` was
+     *                  called previously
      */
-    Treetop.prototype.push = function () {
-        var defs = [], def;
-        for (var i = 0, len = arguments.length; i < len; i++) {
-            def = arguments[i];
-            if (!def) continue;
-            if (this._setup.indexOf(def) === -1) {
-                defs.push(def);
-                this._setup.push(def);
+    Treetop.prototype.init = function (_config) {
+        // Since the client is stateful, mounting is not a
+        // reversible operation. It is crucial therefore that
+        // the initial setup process only ever happens once during
+        // the lifetime of a page. After that elements will only
+        // be mounted (and unmounted) when being attached or detached
+        // from the DOM.
+        if (initCalled) {
+            throw Error("Treetop: init has already been called");
+        }
+        var config = _config instanceof Object ? _config : {};
+
+        for (var key in config) {
+            if (!config.hasOwnProperty(key)) {
+                continue;
+            }
+            switch (key.toLowerCase()) {
+            case "mounttag":
+                $.updateConfig(config[key], $.mountTag)
+                break;
+            case "mountattr":
+                $.updateConfig(config[key], $.mountAttr)
+                break;
+            case "unmounttag":
+                $.updateConfig(config[key], $.unmountTag)
+                break;
+            case "unmountattr":
+                $.updateConfig(config[key], $.unmountAttr)
+                break;
+            case "compose":
+                $.updateConfig(config[key], $.compose)
+                break;
+            case "onnetworkerror":
+                if (typeof config[key] === "function") {
+                  onNetworkError.add(config[key]);
+                }
+                break;
+            case "onunsupported":
+                if (typeof config[key] === "function") {
+                  onUnsupported.add(config[key]);
+                }
+                break;
+            case "extendsdefault":
+            case "extenddefault":
+                continue;
+            default:
+                throw new Error(
+                    "Treetop: unknown configuration property '" + key + "'"
+                );
             }
         }
-        $.bindComponentsAsync(defs);
+
+        if (config.extendDefault !== false ||
+            config.extendsDefault !== false
+        ) {
+            // apply default components
+            $.mountTags["body"] = $.treetopAttribute["mount"];
+            // NOTE: realistically, this will never be 'unmounted', this
+            // should not be necessary.
+            $.unmountTags["body"] = $.treetopAttribute["unmount"];
+        }
+
+        // point of no return
+        $.mount(document.body);
     };
 
-    /**
-     * trigger mount event on a node and it's subtree
-     * @param  {HTMLElement} el
-     */
-    Treetop.prototype.mount = function (el) {
-        $.mount(el);
-    };
-
-    /**
-     * trigger mount event on a node and it's subtree
-     * @param  {HTMLElement} el
-     */
-    Treetop.prototype.unmount = function (el) {
-        $.unmount(el);
-    };
 
     /**
      * Send XHR request to Treetop endpoint. The response is handled
@@ -94,7 +132,7 @@ window.treetop = (function ($, config) {
             }
             // check if the response can be processed by treetop client library,
             // otherwise trigger 'onUnsupported' signal
-            if (xhr.getResponseHeader("x-treetop-see-other") != null) {
+            if (xhr.getResponseHeader("x-treetop-see-other") !== null) {
                 // Redirect browser window
                 window.location = xhr.getResponseHeader("x-treetop-see-other");
 
@@ -123,9 +161,6 @@ window.treetop = (function ($, config) {
         xhr.send(body || null);
     };
 
-    Treetop.prototype.onUnsupported = onUnsupported.add;
-    Treetop.prototype.onNetworkError = onNetworkError.add;
-
     /**
      * treetop.submit will trigger an XHR request derived from the state
      * of a supplied HTML Form element.
@@ -144,48 +179,25 @@ window.treetop = (function ($, config) {
         new $.FormSerializer(formElement, dataHandler);
     }
 
-    Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
-    Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
-
-    var XMLHttpFactories = [
-        function () {return new XMLHttpRequest()},
-        function () {return new ActiveXObject("Msxml2.XMLHTTP")},
-        function () {return new ActiveXObject("Msxml3.XMLHTTP")},
-        function () {return new ActiveXObject("Microsoft.XMLHTTP")}
-    ];
-
-    // see https://www.quirksmode.org/js/xmlhttp.html
-    function createXMLHTTPObject() {
-        var xmlhttp = false;
-        for (var i=0;i<XMLHttpFactories.length;i++) {
-            try {
-                xmlhttp = XMLHttpFactories[i]();
-            }
-            catch (e) {
-                continue;
-            }
-            break;
-        }
-        return xmlhttp;
-    }
-
     // api
-    return new Treetop(config);
+    return new Treetop();
 }({
     //
     // Private
     //
     /**
-     * Store the component definitions by tagName
-     * @type {Object} index
+     * Store configuration
      */
-    bindTagName: null,
+    mountTags: {},
+    mountAttrs: {},
+    unmountTags: {},
+    unmountAttrs: {},
 
     /**
-     * Store the component definitions by attrName
-     * @type {Object} index
+     * Store the treetop composition definitions
+     * @type {Object} object reference
      */
-    bindAttrName: null,
+    compose: {},
 
     /**
      * Track order of requests as well as the elements that were updated.
@@ -194,12 +206,6 @@ window.treetop = (function ($, config) {
      */
     lastRequestID: 0,
     updates: {},
-
-    /**
-     * Store the treetop composition definitions
-     * @type {Object} object reference
-     */
-    composition: {},
 
     /**
      * White-list of request methods types
@@ -268,7 +274,7 @@ window.treetop = (function ($, config) {
                 } else if (child.id) {
                     $.updates["#" + child.id] = requestID;
                 }
-                $.compose(child, old);
+                $.updateElement(child, old);
             }
         }
     },
@@ -319,21 +325,23 @@ window.treetop = (function ($, config) {
      * @param  {HTMLElement} next The element recently loaded from the API
      * @param  {HTMLElement} prev The element currently within the DOM
     */
-    compose: function(next, prev) {
+    updateElement: function(next, prev) {
         var $ = this;
         var nextCompose = next.getAttribute("treetop-compose");
         var prevCompose = prev.getAttribute("treetop-compose");
         var compose = $.defaultComposition;
-        if (typeof nextCompose === "string" && typeof prevCompose === "string") {
+        if (typeof nextCompose === "string" &&
+            typeof prevCompose === "string"
+        ) {
             nextCompose = nextCompose.toLowerCase();
             prevCompose = prevCompose.toLowerCase();
             if (
               nextCompose.length &&
               nextCompose === prevCompose &&
-              $.composition.hasOwnProperty(nextCompose) &&
-              typeof $.composition[nextCompose] === "function"
+              $.compose.hasOwnProperty(nextCompose) &&
+              typeof $.compose[nextCompose] === "function"
             ) {
-                compose = $.composition[nextCompose];
+                compose = $.compose[nextCompose];
             }
         }
 
@@ -346,233 +354,106 @@ window.treetop = (function ($, config) {
         }
     },
 
-    asyncMountFn: function (n, p) {
-        var $ = this;
-        return function () {
-            if (n !== null && p !== null) {
-                $.mount(n);
-                $.unmount(p);
-                n = null;
-                p = null;
-            }
-        };
-    },
-
     /**
-     * Attach an external component to an element and its children depending
-     * on the node name or its attributes
+     * Trigger mount on provided element and all children in
+     * depth first order.
      *
      * @param  {HTMLElement} el
      */
     mount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comps, comp, attr;
-        if (el.nodeType !== 1 && el.nodeType !== 10) {
+        var i, len, j, comp, name;
+        if (el.nodeType !== 1) {
+            // this is not an ELEMENT_NODE
             return;
         }
+        // depth first recursion
         for (i = 0; i < el.children.length; i++) {
             $.mount(el.children[i]);
         }
-        comps = $.bindTagName.get(el.tagName);
-        len = comps.length;
-        for (i = 0; i < len; i++) {
-            comp = comps[i];
-            if (comp && typeof comp.mount === "function") {
-                comp.mount(el);
+        // mount tag component first
+        name = el.tagName.toLowerCase();
+        if ($.mountTags.hasOwnProperty(name)) {
+            comp = $.mountTags[name];
+            if (typeof comp === "function") {
+                comp(el);
             }
         }
+        // mount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            attr = el.attributes[j];
-            comps = $.bindAttrName.get(attr.name);
-            len = comps.length;
-            for (i = 0; i < len; i++) {
-                comp = comps[i];
-                if (comp && typeof comp.mount === "function") {
-                    comp.mount(el);
+            name = el.attributes[j].toLowerCase();
+            if ($.mountAttrs.hasOwnProperty(name)) {
+                comp = $.mountAttrs[name];
+                if (typeof comp === "function") {
+                    comp(el);
                 }
             }
         }
     },
 
     /**
-     * Trigger unmount handler on all Treetop mounted components attached
-     * to a DOM Element
+     * Trigger unmount on provided element and all children in
+     * depth first order.
      *
      * @param  {HTMLElement} el
      */
     unmount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comps, comp, attr;
-        // TODO: do this with a stack not recursion
+        var i, len, j, comp, name;
+        if (el.nodeType !== 1) {
+            // this is not an ELEMENT_NODE
+            return;
+        }
+        // depth first recursion
         for (i = 0; i < el.children.length; i++) {
             $.unmount(el.children[i]);
         }
-        comps = $.bindTagName.get(el.tagName);
-        len = comps.length;
-        for (i = 0; i < len; i++) {
-            comp = comps[i];
-            if (comp && typeof comp.unmount === "function") {
-                comp.unmount(el);
+        // unmount tag component first
+        name = el.tagName.toLowerCase();
+        if ($.unmountTags.hasOwnProperty(name)) {
+            comp = $.unmountTags[name];
+            if (typeof comp === "function") {
+                comp(el);
             }
         }
+        // unmount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            attr = el.attributes[j];
-            comps = $.bindAttrName.get(attr.name);
-            len = comps.length;
-            for (i = 0; i < len; i++) {
-                comp = comps[i];
-                if (comp && typeof comp.unmount === "function") {
-                    comp.unmount(el);
+            name = el.attributes[j].toLowerCase();
+            if ($.unmountAttrs.hasOwnProperty(name)) {
+                comp = $.unmountAttrs[name];
+                if (typeof comp === "function") {
+                    comp(el);
                 }
             }
         }
     },
 
-    /**
-     * index all component definitions and mount the full document
-     *
-     * @param  {Array} setup List of component definitions
-     */
-    bindComponents: function (setup) {
-        "use strict";
-        var $ = this;
-        var def, i, len = setup.length;
-        $.bindTagName = $.index();
-        $.bindAttrName = $.index();
-        for (i = 0; i < len; i++) {
-            def = setup[i];
-            if (!(def instanceof Object)) {
+    XMLHttpFactories: [
+        function () {return new XMLHttpRequest()},
+        function () {return new ActiveXObject("Msxml2.XMLHTTP")},
+        function () {return new ActiveXObject("Msxml3.XMLHTTP")},
+        function () {return new ActiveXObject("Microsoft.XMLHTTP")}
+    ],
+
+    // see https://www.quirksmode.org/js/xmlhttp.html
+    createXMLHTTPObject: function() {
+        var xmlhttp = false;
+        for (var i = 0; i < this.XMLHttpFactories.length; i++) {
+            try {
+                xmlhttp = XMLHttpFactories[i]();
+            }
+            catch (e) {
                 continue;
             }
-            if (def.compose instanceof Object) {
-                for (var prop in def.compose) {
-                    if (def.compose.hasOwnProperty(prop) && typeof def.compose[prop] === "function") {
-                        $.composition[prop.toLowerCase()] = def.compose[prop];
-                    }
-                }
-            } else {
-                if (def.tagName) {
-                    $.bindTagName.get(def.tagName.toUpperCase()).push(def);
-                }
-                if (def.attrName) {
-                    $.bindAttrName.get(def.attrName.toUpperCase()).push(def);
-                }
-            }
+            break;
         }
-        $.mount(document.body);
+        return xmlhttp;
     },
 
     /**
-     * index all component definitions some time before the next rendering frame
-     *
-     * @param  {Array} setup List of component definitions
-     */
-    bindComponentsAsync: (function () {
-        "use strict";
-        var id = null;
-        return function (setup) {
-            var $ = this;
-            $.cancelAnimationFrame(id);
-            id = $.requestAnimationFrame(function () {
-                $.bindComponents(setup);
-            });
-        };
-    }()),
-
-
-    /**
-     * x-browser requestAnimationFrame shim
-     *
-     * see: https://gist.github.com/paulirish/1579671
-     */
-    requestAnimationFrame: (function () {
-        "use strict";
-        var requestAnimationFrame = window.requestAnimationFrame;
-        var lastTime = 0;
-        var vendors = ["ms", "moz", "webkit", "o"];
-        for (var i = 0; i < vendors.length && !requestAnimationFrame; ++i) {
-            requestAnimationFrame = window[vendors[i] + "RequestAnimationFrame"];
-        }
-
-        if (!requestAnimationFrame) {
-            requestAnimationFrame = function (callback) {
-                var currTime = new Date().getTime();
-                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                var id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-                lastTime = currTime + timeToCall;
-                return id;
-            };
-        }
-
-        return function (cb) {
-            // must be bound to window object
-            return requestAnimationFrame.call(window, cb);
-        };
-    }()),
-
-    /**
-     * x-browser cancelAnimationFrame shim
-     *
-     * see: https://gist.github.com/paulirish/1579671
-     */
-    cancelAnimationFrame: (function () {
-        "use strict";
-        var cancelAnimationFrame = window.cancelAnimationFrame;
-        var vendors = ["ms", "moz", "webkit", "o"];
-        for (var i = 0; i < vendors.length && !cancelAnimationFrame; ++i) {
-            cancelAnimationFrame = window[vendors[i] + "CancelAnimationFrame"] || window[vendors[i] + "CancelRequestAnimationFrame"];
-        }
-
-        if (!cancelAnimationFrame) {
-            cancelAnimationFrame = function (id) {
-                clearTimeout(id);
-            };
-        }
-
-        return function (cb) {
-            // must be bound to window object
-            return cancelAnimationFrame.call(window, cb);
-        };
-    }()),
-
-
-    /**
-     * Create a case insensitive dictionary
-     *
-     * @returns {Object} implementing { get(string)Array, has(string)bool }
-     */
-    index: function () {
-        "use strict";
-        var _store = {};
-        return {
-            get: function (key) {
-                if (typeof key != "string" || key === "") {
-                    throw new Error("Index: invalid key (" + key + ")");
-                }
-                // underscore used to avoid collisions with Object prototype
-                var _key = ("_" + key).toUpperCase();
-                if (_store.hasOwnProperty(_key)) {
-                    return _store[_key];
-                } else {
-                    return (_store[_key] = []);
-                }
-            },
-            has: function (key) {
-                if (typeof key != "string" || key === "") {
-                    return false;
-                }
-                var _key = ("_" + key).toUpperCase();
-                return _store.hasOwnProperty(_key);
-            }
-        };
-    },
-
-    /**
-     * The dumbest event dispatcher I can think of
+     * Very basic event dispatcher
      *
      * @return {Object} Object implementing the { add(Function)Function, trigger() } interface
      */
@@ -809,154 +690,172 @@ window.treetop = (function ($, config) {
         }
 
         return FormSerializer;
-    }())
-}, window.treetop));
-
-
-/**
- * Register treetop delegation event handlers on the document.body
- */
-window.treetop.push(function ($) {
-    "use strict";
-
-    // handlers:
-    function documentClick(_evt) {
-        var evt = _evt || window.event;
-        var elm = _evt.target || _evt.srcElement;
-        while (elm.tagName.toUpperCase() !== "A") {
-            if (elm.parentElement) {
-                elm = elm.parentElement;
-            } else {
-                return; // this is not an anchor click
+    }()),
+    
+    /**
+     * utility to update target dict with config. Keys are case insensitive
+     * and values must be functions
+     *
+     * @param {object} config Dict {String => Function}
+     * @param {object} target Dict {String => Function}
+     *
+     */
+    updateConfig: function (config, target) {
+        for (var key in config) {
+            if (config.hasOwnProperty(key) && typeof config[key] === "function") {
+                target[key.toLowerCase()] = config[key];
             }
         }
-        $.anchorClicked(evt, elm);
-    }
-
-    function updateModifiers(_kevt) {
-        var kevt = _kevt || window.event;
-        $.shiftKey =  kevt.shiftKey;
-        $.ctrlKey =  kevt.ctrlKey;
-        $.metaKey =  kevt.metaKey;
-    }
-
-    function onSubmit(_evt) {
-        var evt = _evt || window.event;
-        var elm = _evt.target || _evt.srcElement;
-        $.formSubmit(evt, elm);
-    }
-
-    function onPopState(_evt) {
-        var evt = _evt || window.event;
-        $.browserPopState(evt);
-    }
+    },
 
     /**
-     * treetop event delegation component definition
+     * This is the implementation of the 'treetop' attributes for overloading
+     * html anchors and form elements. It works by registering event handlers on
+     * the body element.
+     *
+     * @type {Object} dictionary with 'mount' and 'unmount' function
+     *
      */
-    return {
-        tagName: "body",
-        mount: function (el) {
-            if (el.addEventListener) {
-                el.addEventListener("click", documentClick, false);
-                el.addEventListener("submit", onSubmit, false);
-                el.addEventListener("keydown", updateModifiers, false);
-                el.addEventListener("keyup", updateModifiers, false);
-            } else if (el.attachEvent) {
-                el.attachEvent("onclick", documentClick);
-                el.attachEvent("onsubmit", onSubmit);
-                el.attachEvent("onkeydown", updateModifiers);
-                el.attachEvent("onkeyup", updateModifiers);
-            } else {
-                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
+    bodyComponent: (function ($) {
+        "use strict";
+
+        // handlers:
+        function documentClick(_evt) {
+            var evt = _evt || window.event;
+            var elm = _evt.target || _evt.srcElement;
+            while (elm.tagName.toUpperCase() !== "A") {
+                if (elm.parentElement) {
+                    elm = elm.parentElement;
+                } else {
+                    return; // this is not an anchor click
+                }
             }
-            window.onpopstate = onPopState;
+            $.anchorClicked(evt, elm);
+        }
+
+        function updateModifiers(_kevt) {
+            var kevt = _kevt || window.event;
+            $.shiftKey =  kevt.shiftKey;
+            $.ctrlKey =  kevt.ctrlKey;
+            $.metaKey =  kevt.metaKey;
+        }
+
+        function onSubmit(_evt) {
+            var evt = _evt || window.event;
+            var elm = _evt.target || _evt.srcElement;
+            $.formSubmit(evt, elm);
+        }
+
+        function onPopState(_evt) {
+            var evt = _evt || window.event;
+            $.browserPopState(evt);
+        }
+
+        /**
+         * treetop event delegation component definition
+         */
+        return {
+            mount: function (el) {
+                if (el.addEventListener) {
+                    el.addEventListener("click", documentClick, false);
+                    el.addEventListener("submit", onSubmit, false);
+                    el.addEventListener("keydown", updateModifiers, false);
+                    el.addEventListener("keyup", updateModifiers, false);
+                } else if (el.attachEvent) {
+                    el.attachEvent("onclick", documentClick);
+                    el.attachEvent("onsubmit", onSubmit);
+                    el.attachEvent("onkeydown", updateModifiers);
+                    el.attachEvent("onkeyup", updateModifiers);
+                } else {
+                    throw new Error("Treetop Events: Event delegation is not supported in this browser!");
+                }
+                window.onpopstate = onPopState;
+            },
+            unmount: function (el) {
+                if (el.removeEventListener) {
+                    el.removeEventListener("click", documentClick);
+                    el.removeEventListener("submit", onSubmit);
+                    el.removeEventListener("keydown", updateModifiers);
+                    el.removeEventListener("keyup", updateModifiers);
+                } else if (el.detachEvent) {
+                    el.detachEvent("onclick", documentClick);
+                    el.detachEvent("onsubmit", onSubmit);
+                    el.detachEvent("onkeydown", updateModifiers);
+                    el.detachEvent("onkeyup", updateModifiers);
+                }
+                if(window.onpopstate === onPopState) {
+                    window.onpopstate = null;
+                }
+            }
+        };
+    }({
+        //
+        // Default Component Private
+        //
+
+        // track modifier key state
+        shiftKey: false,
+        ctrlKey: false,
+        metaKey: false,
+
+        /**
+         * document submit event handler
+         *
+         * @param {Event} evt
+         */
+        anchorClicked: function (evt, elm) {
+            "use strict";
+            if (this.shiftKey || this.ctrlKey || this.metaKey ||
+                (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
+            ) {
+                // Use default browser behaviour when a modifier key is pressed
+                // or treetop has been explicity disabled
+                return
+            }
+            if (elm.hasAttribute("treetop-link")) {
+                // 'treetop-link' attribute can be used as an alternative to 'href' attribute.
+                // This is useful when default 'href' behavior is undesirable.
+                evt.preventDefault();
+                window.treetop.request("GET", elm.getAttribute("treetop-link"));
+                return false;
+            } else if (elm.href && elm.hasAttribute("treetop")) {
+                // hijack standard link click, extract href of link and
+                // trigger a Treetop XHR request instead
+                evt.preventDefault();
+                window.treetop.request("GET", elm.href);
+                return false;
+            }
         },
-        unmount: function (el) {
-            if (el.removeEventListener) {
-                el.removeEventListener("click", documentClick);
-                el.removeEventListener("submit", onSubmit);
-                el.removeEventListener("keydown", updateModifiers);
-                el.removeEventListener("keyup", updateModifiers);
-            } else if (el.detachEvent) {
-                el.detachEvent("onclick", documentClick);
-                el.detachEvent("onsubmit", onSubmit);
-                el.detachEvent("onkeydown", updateModifiers);
-                el.detachEvent("onkeyup", updateModifiers);
+
+        /**
+         * document submit event handler
+         *
+         * @param {Event} evt
+         */
+        formSubmit: function (evt, elm) {
+            "use strict";
+            if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
+                evt.preventDefault();
+
+                // Serialize HTML form including file inputs and trigger a treetop request.
+                // The request will be executed asynchronously.
+                // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
+                window.treetop.submit(elm);
+
+                return false;
             }
-            if(window.onpopstate === onPopState) {
-                window.onpopstate = null;
-            }
+        },
+
+        /**
+         * document history pop state event handler
+         *
+         * @param {PopStateEvent} e
+         */
+        browserPopState: function () {
+            "use strict";
+            // force browser to refresh the page when the back
+            // nav is triggered, seems to be the best thing to do
+            location.reload();
         }
-    };
-}({
-    //
-    // Private
-    //
-
-    // track modifier key state
-    shiftKey: false,
-    ctrlKey: false,
-    metaKey: false,
-
-    /**
-     * document submit event handler
-     *
-     * @param {Event} evt
-     */
-    anchorClicked: function (evt, elm) {
-        "use strict";
-        if (this.shiftKey || this.ctrlKey || this.metaKey ||
-            (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
-        ) {
-            // Use default browser behaviour when a modifier key is pressed
-            // or treetop has been explicity disabled
-            return
-        }
-        if (elm.hasAttribute("treetop-link")) {
-            // 'treetop-link' attribute can be used as an alternative to 'href' attribute.
-            // This is useful when default 'href' behavior is undesirable.
-            evt.preventDefault();
-            window.treetop.request("GET", elm.getAttribute("treetop-link"));
-            return false;
-        } else if (elm.href && elm.hasAttribute("treetop")) {
-            // hijack standard link click, extract href of link and
-            // trigger a Treetop XHR request instead
-            evt.preventDefault();
-            window.treetop.request("GET", elm.href);
-            return false;
-        }
-    },
-
-    /**
-     * document submit event handler
-     *
-     * @param {Event} evt
-     */
-    formSubmit: function (evt, elm) {
-        "use strict";
-        if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
-            evt.preventDefault();
-
-            // Serialize HTML form including file inputs and trigger a treetop request.
-            // The request will be executed asynchronously.
-            // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
-            window.treetop.submit(elm);
-
-            return false;
-        }
-    },
-
-    /**
-     * document history pop state event handler
-     *
-     * @param {PopStateEvent} e
-     */
-    browserPopState: function () {
-        "use strict";
-        // force browser to refresh the page when the back
-        // nav is triggered, seems to be the best thing to do
-        location.reload();
-    }
+    }))
 }));
-
