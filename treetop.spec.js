@@ -369,10 +369,12 @@ describe('Treetop', () => {
     beforeEach(() => {
       this.el = document.createElement("test-node");
       this.el.setAttribute("id", "test");
+      this.el.setAttribute("test-node2", 456);
       document.body.appendChild(this.el);
       this.el2 = document.createElement("div");
       this.el2.setAttribute("id", "test2");
       this.el2.setAttribute("test-node", 123);
+      this.el2.setAttribute("test-node2", 456);
       document.body.appendChild(this.el2);
       // component definition:
       this.component = {
@@ -382,8 +384,7 @@ describe('Treetop', () => {
         unmount: sinon.spy()
       };
       this.component2 = {
-        tagName: "test-node",
-        attrName: "test-node",
+        attrName: "test-node2",
         mount: sinon.spy(),
         unmount: sinon.spy()
       };

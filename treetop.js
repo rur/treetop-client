@@ -2,9 +2,10 @@
 
 window.treetop = (function ($, config) {
     "use strict";
-    if (config && typeof config.treetopClientVersion === "string") {
-        // treetop is already defined, return it
-        return config;
+    if (window.treetop !== void 0) {
+      // throwing an error here is useful since it prevents window.treetop from being
+      // reassigned
+      throw Error("treetop global is already defined")
     }
 
     // First check browser support for essential modern features
@@ -27,15 +28,8 @@ window.treetop = (function ($, config) {
      * @param {Array|Treetop} setup GA style initialization
      */
     function Treetop(setup) {
-        if (setup instanceof Array) {
-            this._setup = setup.slice();
-        } else {
-            this._setup = [];
-        }
-        this._setup = (this._setup || []).slice();
+        this._setup = (setup || []).slice();
     }
-
-    Treetop.prototype.treetopClientVersion = "[[TREETOP_VERSION]]";
 
     /**
      * Add a component definition
@@ -333,7 +327,12 @@ window.treetop = (function ($, config) {
         if (typeof nextCompose === "string" && typeof prevCompose === "string") {
             nextCompose = nextCompose.toLowerCase();
             prevCompose = prevCompose.toLowerCase();
-            if (nextCompose === prevCompose && nextCompose in $.composition && typeof $.composition[nextCompose] === "function") {
+            if (
+              nextCompose.length &&
+              nextCompose === prevCompose &&
+              $.composition.hasOwnProperty(nextCompose) &&
+              typeof $.composition[nextCompose] === "function"
+            ) {
                 compose = $.composition[nextCompose];
             }
         }
@@ -444,11 +443,10 @@ window.treetop = (function ($, config) {
         $.bindAttrName = $.index();
         for (i = 0; i < len; i++) {
             def = setup[i];
-            if (!def) {
+            if (!(def instanceof Object)) {
                 continue;
-            } else if (typeof def === "function") {
-                def();  // init function
-            } else if (def.compose instanceof Object) {
+            }
+            if (def.compose instanceof Object) {
                 for (var prop in def.compose) {
                     if (def.compose.hasOwnProperty(prop) && typeof def.compose[prop] === "function") {
                         $.composition[prop.toLowerCase()] = def.compose[prop];
