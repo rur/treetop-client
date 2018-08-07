@@ -12,7 +12,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
     if (!(window.history && typeof window.history.pushState === 'function')) {
-        throw Error("Treetop: HTML5 History API not supported, a polyfil should be used");
+        throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
     var initCalled = false;
 
@@ -41,7 +41,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             throw Error("Treetop: init has already been called");
         }
         var config = _config instanceof Object ? _config : {};
-        var extendDefault;
+        var mountDefault;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -73,9 +73,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                     $.onUnsupported = config[key];
                 }
                 break;
-            case "extendsdefault":
-            case "extenddefault":
-                extendDefault = !(config[key] === false);
+            case "mountdefault":
+                mountDefault = !(config[key] === false);
                 continue;
             default:
                 throw new Error(
@@ -84,7 +83,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
         }
 
-        if (extendDefault) {
+        if (mountDefault) {
             // apply default components
             $.mountTags["body"] = BodyComponent.mount;
             // NOTE: realistically, body will never be 'unmounted', this
@@ -100,9 +99,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         };
     };
 
+    /**
+     * Get a copy of the treetop configuration,
+     * useful for debugging.
+     *
+     * Note, mutating this object will not affect the configuration.
+     *
+     * @returns {Object} copy of internal configuration
+     */
     Treetop.prototype.config = function () {
-        // make a full copy of the treetop configuration
-        // the configuartion cannot be changed from outside
         return {
             mountTags: $.copyConfig($.mountTags),
             mountAttrs: $.copyConfig($.mountAttrs),
