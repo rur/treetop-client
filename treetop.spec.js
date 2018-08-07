@@ -4,45 +4,74 @@ const sinon = require('sinon');
 const chai = require('chai');
 const expect = chai.expect;
 
+window.treetop.init({
+  extendsDefault: true,
+  mountTags: {
+    "test-node": sinon.spy()
+  },
+  mountAttrs: {
+    "test": sinon.spy(),
+    "test2": sinon.spy()
+  },
+  unmountTags: {
+    "test-node": sinon.spy()
+  },
+  unmountAttrs: {
+    "test": sinon.spy(),
+    "test2": sinon.spy()
+  },
+  compose: {
+    "test": (next, prev) => {
+      Array.from(next.children).forEach(child => {
+        prev.appendChild(child);
+      });
+    }
+  }
+});
 
 describe('Treetop', () => {
   'strict mode';
-  var requests;
-  var treetop;
+  var treetop, requests;
 
   beforeEach(() => {
     this.xhr = sinon.useFakeXMLHttpRequest();
     global.XMLHttpRequest = this.xhr;
     requests = [];
     treetop = window.treetop;
-    this.xhr.onCreate = req => requests.push(req);
-    treetop.push();
-    window.requestAnimationFrame.lastCall.args[0]();
+    this.xhr.onCreate = function (xhr) {
+      requests.push(xhr);
+    };
   });
 
   afterEach(() => {
     this.xhr.restore();
-    window.requestAnimationFrame.resetHistory();
-    window.cancelAnimationFrame.resetHistory();
   });
 
   describe('issue basic GET request', () => {
-    var req = null;
-    beforeEach(() => {
-      treetop.request("GET", "/test");
-      req = requests[0];
+    it('should have issued a request', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req).to.exist
     });
 
-    it('should have issued a request', () => expect(req).to.exist);
-
     it('should have issued a request with the method and url', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("GET");
     });
 
-    it('should have added the treetop header', () => expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE));
+    it('should have added the treetop header', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE)
+    });
 
-    it('should have no body', () => expect(req.requestBody).to.be.null);
+    it('should have no body', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req.requestBody).to.be.null
+    });
   });
 
   describe('issue basic POST request', () => {
@@ -149,7 +178,7 @@ describe('Treetop', () => {
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test">sooner!</em>'
-      );
+     );
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
@@ -208,15 +237,6 @@ describe('Treetop', () => {
       el.setAttribute("id", "test");
       el.setAttribute("treetop-compose", "test");
       el.innerHTML = "<li>1</li><li>2</li><li>3</li>";
-      treetop.push({
-        "compose": {
-          "test": (next, prev) => {
-            Array.from(next.children).forEach(child => {
-              prev.appendChild(child);
-            });
-          }
-        }
-      });
       document.body.appendChild(el);
     });
 
@@ -286,7 +306,6 @@ describe('Treetop', () => {
       this.el.textContent = "Before!";
       this.el.setAttribute("id", "test");
       document.body.appendChild(this.el);
-      return treetop.mount(document.body);
     });
 
     afterEach(() => document.body.removeChild(document.getElementById("test")));
@@ -313,23 +332,16 @@ describe('Treetop', () => {
   });
 
   describe('binding components', () => {
+    var config;
     beforeEach(() => {
-      this.el = document.createElement("test-node");
-      this.el.setAttribute("id", "test");
-      document.body.appendChild(this.el);
-      this.el2 = document.createElement("div");
-      this.el2.setAttribute("id", "test2");
-      this.el2.setAttribute("test-node", 123);
-      document.body.appendChild(this.el2);
-      // component definition:
-      this.component = {
-        tagName: "test-node",
-        attrName: "test-node",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      treetop.push(this.component);
-      window.requestAnimationFrame.lastCall.args[0]();
+      var el = document.createElement("p");
+      el.setAttribute("id", "test");
+      document.body.appendChild(el);
+      var el2 = document.createElement("div");
+      el2.setAttribute("id", "test2");
+      el2.setAttribute("test-node", 123);
+      document.body.appendChild(el2);
+      config = window.treetop.config();
     });
 
     afterEach(() => {
@@ -338,14 +350,31 @@ describe('Treetop', () => {
     });
 
     it('should have called the mount on the element', () => {
-      expect(this.component.mount.calledWith(this.el)).to.be.true;
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test");
+      expect(el.tagName).to.equal("TEST-NODE");
+      var mount = config.mountTags["test-node"];
+      expect(mount.calledWith(el)).to.be.true;
     });
 
     it('should have called the mount on the attribute', () => {
-      expect(this.component.mount.calledWith(this.el2)).to.be.true;
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test-child");
+      var mount = config.mountAttrs["test"]
+      expect(mount.calledWith(el)).to.be.true;
     });
 
-    describe('when unmounted', () => {
+    xdescribe('when unmounted', () => {
       beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
@@ -365,7 +394,7 @@ describe('Treetop', () => {
     });
   });
 
-  describe('binding two components', () => {
+  xdescribe('binding two components', () => {
     beforeEach(() => {
       this.el = document.createElement("test-node");
       this.el.setAttribute("id", "test");
@@ -376,20 +405,6 @@ describe('Treetop', () => {
       this.el2.setAttribute("test-node", 123);
       this.el2.setAttribute("test-node2", 456);
       document.body.appendChild(this.el2);
-      // component definition:
-      this.component = {
-        tagName: "test-node",
-        attrName: "test-node",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      this.component2 = {
-        attrName: "test-node2",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      treetop.push(this.component);
-      treetop.push(this.component2);
       window.requestAnimationFrame.lastCall.args[0]();
     });
 

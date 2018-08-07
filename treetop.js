@@ -14,11 +14,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     if (!(window.history && typeof window.history.pushState === 'function')) {
         throw Error("Treetop: HTML5 History API not supported, a polyfil should be used");
     }
-    // Triggered when treetop receives a response that it cannot handle
-    // This generally means a non-treetop response was captured. The xhr instance
-    // will be passed to the signal handler.
-    var onUnsupported = $.simpleSignal();
-    var onNetworkError = $.simpleSignal();
     var initCalled = false;
 
     /**
@@ -53,29 +48,29 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 continue;
             }
             switch (key.toLowerCase()) {
-            case "mounttag":
-                $.updateConfig(config[key], $.mountTag)
+            case "mounttags":
+                $.mountTags = $.copyConfig(config[key])
                 break;
-            case "mountattr":
-                $.updateConfig(config[key], $.mountAttr)
+            case "mountattrs":
+                $.mountAttrs = $.copyConfig(config[key])
                 break;
-            case "unmounttag":
-                $.updateConfig(config[key], $.unmountTag)
+            case "unmounttags":
+                $.unmountTags = $.copyConfig(config[key])
                 break;
-            case "unmountattr":
-                $.updateConfig(config[key], $.unmountAttr)
+            case "unmountattrs":
+                $.unmountAttrs = $.copyConfig(config[key])
                 break;
             case "compose":
-                $.updateConfig(config[key], $.compose)
+                $.compose = $.copyConfig(config[key])
                 break;
             case "onnetworkerror":
                 if (typeof config[key] === "function") {
-                  onNetworkError.add(config[key]);
+                    $.onNetworkError = config[key];
                 }
                 break;
             case "onunsupported":
                 if (typeof config[key] === "function") {
-                  onUnsupported.add(config[key]);
+                    $.onUnsupported = config[key];
                 }
                 break;
             case "extendsdefault":
@@ -105,6 +100,20 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         };
     };
 
+    Treetop.prototype.config = function () {
+        // make a full copy of the treetop configuration
+        // the configuartion cannot be changed from outside
+        return {
+            mountTags: $.copyConfig($.mountTags),
+            mountAttrs: $.copyConfig($.mountAttrs),
+            unmountTags: $.copyConfig($.unmountTags),
+            unmountAttrs: $.copyConfig($.unmountAttrs),
+            compose: $.copyConfig($.compose),
+            onNetworkError: $.onNetworkError,
+            onUnsupported: $.onUnsupported,
+        };
+    };
+
 
     /**
      * Send XHR request to Treetop endpoint. The response is handled
@@ -120,7 +129,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         if (!$.METHODS[method.toUpperCase()]) {
             throw new Error("Treetop: Unknown request method '" + method + "'");
         }
-        var xhr = createXMLHTTPObject();
+
+        var xhr = $.createXMLHTTPObject();
         if (!xhr) {
             throw new Error("Treetop: XHR is not supproted by this browser");
         }
@@ -153,14 +163,17 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 // this is a fragment response, just process the update
                 $.xhrProcess(xhr, requestID, false);
 
-            } else {
+            } else if(typeof $.onUnsupported === "function") {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.
-                onUnsupported.trigger(xhr);
+                $.onUnsupported(xhr);
             }
         };
         xhr.onerror = function () {
-            onNetworkError.trigger(xhr);
+            if(typeof $.onNetworkError === "function") {
+                // Network level error, likely a connection problem
+                $.onNetworkError(xhr);
+            }
         };
         xhr.send(body || null);
     };
@@ -183,6 +196,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         new FormSerializer(formElement, dataHandler);
     }
 
+    Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
+    Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
+
     // api
     return new Treetop();
 }({
@@ -196,6 +212,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     mountAttrs: {},
     unmountTags: {},
     unmountAttrs: {},
+    onUnsupported: null,
+    onNetworkError: null,
 
     /**
      * Store the treetop composition definitions
@@ -293,7 +311,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         // force browser to refresh the page when the back
         // nav is triggered, seems to be the best thing to do
         location.reload();
-    }
+    },
 
     /**
      * Given a HTMLELement node attached to the DOM, this will
@@ -398,7 +416,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         // mount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            name = el.attributes[j].toLowerCase();
+            name = el.attributes[j].name.toLowerCase();
             if ($.mountAttrs.hasOwnProperty(name)) {
                 comp = $.mountAttrs[name];
                 if (typeof comp === "function") {
@@ -436,7 +454,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         // unmount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            name = el.attributes[j].toLowerCase();
+            name = el.attributes[j].name.toLowerCase();
             if ($.unmountAttrs.hasOwnProperty(name)) {
                 comp = $.unmountAttrs[name];
                 if (typeof comp === "function") {
@@ -453,11 +471,12 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         function () {return new ActiveXObject("Msxml3.XMLHTTP")},
         function () {return new ActiveXObject("Microsoft.XMLHTTP")}
     ],
+
     createXMLHTTPObject: function() {
         var xmlhttp = false;
         for (var i = 0; i < this.XMLHttpFactories.length; i++) {
             try {
-                xmlhttp = XMLHttpFactories[i]();
+                xmlhttp = this.XMLHttpFactories[i]();
             }
             catch (e) {
                 continue;
@@ -468,63 +487,26 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     },
 
     /**
-     * Very basic event dispatcher
+     * Create copy of config object, all keys are tranformed to lowercase.
+     * Non-function type config values will be ignored.
      *
-     * @return {Object} Object implementing the { add(Function)Function, trigger() } interface
-     */
-    simpleSignal: function () {
-        var listeners = [];
-        return {
-            add: function (f) {
-                var i = listeners.indexOf(f);
-                if (i === -1) {
-                    i = listeners.push(f) - 1;
-                }
-                return function remove() {
-                    listeners[i] = null;
-                };
-            },
-            trigger: function () {
-                for (var i = 0; i < listeners.length; i++) {
-                    if (typeof listeners[i] === "function") {
-                        switch (arguments.length) {
-                        case 0:
-                           listeners[i]();
-                           break;
-                        case 1:
-                           listeners[i](arguments[0]);
-                           break;
-                        case 2:
-                           listeners[i](arguments[0], arguments[1]);
-                           break;
-                        case 3:
-                           listeners[i](arguments[0], arguments[1], arguments[2]);
-                           break;
-                        default:
-                           listeners[i].apply(null, arguments);
-                           break;
-                      }
-                   }
-                }
-            }
-        }
-    },
-
-
-    /**
-     * utility to update target dict with config. Keys are case insensitive
-     * and values must be functions
-     *
-     * @param {object} config Dict {String => Function}
-     * @param {object} target Dict {String => Function}
+     * @param {object} source Dict {String => Function}
      *
      */
-    updateConfig: function (config, target) {
-        for (var key in config) {
-            if (config.hasOwnProperty(key) && typeof config[key] === "function") {
-                target[key.toLowerCase()] = config[key];
+    copyConfig: function (source) {
+        var target = {};
+        // snippet from
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Polyfill
+        for (var key in source) {
+            if (typeof source[key] !== "function") {
+                continue;
+            }
+            // Avoid bugs when hasOwnProperty is shadowed
+            if (Object.prototype.hasOwnProperty.call(source, key)) {
+               target[key.toLowerCase()] = source[key];
             }
         }
+        return target;
     },
 
 }, (function ($) {
@@ -855,5 +837,4 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     }
 
     return FormSerializer;
-}())
-}));
+}())));
