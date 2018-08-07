@@ -273,7 +273,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         i = len = temp = child = old = nodes = undefined;
 
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
-        var temp = document.createElement('template');
+        temp = document.createElement('template');
         temp.innerHTML = xhr.responseText;
         nodes = new Array(temp.content.children.length);
         for (i = 0, len = temp.content.children.length; i < len; i++) {
@@ -327,15 +327,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         var parentUpdate = 0;
         if (node === document.body) {
             if ("BODY" in this.updates) {
-                updatedID = this.updates["BODY"]
+                updatedID = this.updates["BODY"];
             }
             // dont descent further
             return updatedID;
         } else if (node.id && "#" + node.id in this.updates) {
-            updatedID = this.updates["#" + node.id]
+            updatedID = this.updates["#" + node.id];
         }
         if (node.parentNode) {
-            parentUpdate = this.getLastUpdate(node.parentNode)
+            parentUpdate = this.getLastUpdate(node.parentNode);
             if (parentUpdate > updatedID) {
                 return parentUpdate;
             }

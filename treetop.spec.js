@@ -374,10 +374,19 @@ describe('Treetop', () => {
       expect(mount.calledWith(el)).to.be.true;
     });
 
-    xdescribe('when unmounted', () => {
+    describe('when unmounted', () => {
+      var el, el2;
       beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        );
+        el = document.getElementById("test");
+        el2 = document.getElementById("test-child");
+        treetop.request("GET", "/test");
+        requests[1].respond(
           200,
           { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
           '<div id="test">after!</div><div id="test2">after2!</div>'
@@ -385,48 +394,80 @@ describe('Treetop', () => {
       });
 
       it('should have called the unmount on the element', () => {
-        expect(this.component.unmount.calledWith(this.el)).to.be.true;
+        var unmount = config.unmountTags["test-node"]
+        expect(unmount.calledWith(el)).to.be.true;
       });
 
       it('should have called the unmount on the attribute', () => {
-        expect(this.component.unmount.calledWith(this.el2)).to.be.true;
+        var unmount = config.unmountAttrs["test"]
+        expect(unmount.calledWith(el2)).to.be.true;
       });
     });
-  });
 
-  xdescribe('binding two components', () => {
-    beforeEach(() => {
-      this.el = document.createElement("test-node");
-      this.el.setAttribute("id", "test");
-      this.el.setAttribute("test-node2", 456);
-      document.body.appendChild(this.el);
-      this.el2 = document.createElement("div");
-      this.el2.setAttribute("id", "test2");
-      this.el2.setAttribute("test-node", 123);
-      this.el2.setAttribute("test-node2", 456);
-      document.body.appendChild(this.el2);
-      window.requestAnimationFrame.lastCall.args[0]();
+    describe('when unmounted', () => {
+      var el, el2;
+      beforeEach(() => {
+        treetop.request("GET", "/test");
+        requests[0].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        );
+        el = document.getElementById("test");
+        el2 = document.getElementById("test-child");
+        treetop.request("GET", "/test");
+        requests[1].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<div id="test">after!</div><div id="test2">after2!</div>'
+        );
+      });
+
+      it('should have called the unmount on the element', () => {
+        var unmount = config.unmountTags["test-node"]
+        expect(unmount.calledWith(el)).to.be.true;
+      });
+
+      it('should have called the unmount on the attribute', () => {
+        var unmount = config.unmountAttrs["test"]
+        expect(unmount.calledWith(el2)).to.be.true;
+      });
     });
 
-    afterEach(() => {
-      document.body.removeChild(document.getElementById("test"));
-      document.body.removeChild(document.getElementById("test2"));
+    it('should have called mount on the same component multiple times', () => {
+      var el;
+      var mount = config.mountAttrs["test"]
+      var mount2 = config.mountAttrs["test2"]
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test test2>New Cell!</p></test-node>'
+      );
+      el = document.getElementById("test-child");
+      expect(mount.calledWith(el)).to.be.true;
+      expect(mount2.calledWith(el)).to.be.true;
     });
 
-    it('should have called mount on component 1 for the tagName', () => {
-      expect(this.component.mount.calledWith(this.el)).to.be.true;
-    });
-
-    it('should have called mount on component 1 for the attrName', () => {
-      expect(this.component.mount.calledWith(this.el2)).to.be.true;
-    });
-
-    it('should have called mount on component 2 for the tagName', () => {
-      expect(this.component2.mount.calledWith(this.el)).to.be.true;
-    });
-
-    it('should have called mount on component 2 for the attrName', () => {
-      expect(this.component2.mount.calledWith(this.el2)).to.be.true;
+    it('should have called unmount on the same element multiple times', () => {
+      var el;
+      var unmount = config.unmountAttrs["test"]
+      var unmount2 = config.unmountAttrs["test2"]
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test test2>New Data</p></test-node>'
+      );
+      el = document.getElementById("test-child");
+      treetop.request("GET", "/test");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<div id="test">replaced</div>'
+      );
+      expect(unmount.calledWith(el)).to.be.true;
+      expect(unmount2.calledWith(el)).to.be.true;
     });
   });
 });
