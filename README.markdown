@@ -1,5 +1,7 @@
 # Treetop Client
 
+[![Build Status](https://travis-ci.org/rur/treetop-client.svg?branch=master)](https://travis-ci.org/rur/treetop-client)
+
 Browser client library for treetop enabled web servers.
 
 See [Treetop server library](https://github.com/rur/treetop) for more details.
