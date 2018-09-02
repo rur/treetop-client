@@ -11,7 +11,7 @@ window.treetop.init({
   },
   mountAttrs: {
     "test": sinon.spy(),
-    "test2": sinon.spy()
+    "test2": sinon.spy(),
   },
   unmountTags: {
     "test-node": sinon.spy()
@@ -41,6 +41,12 @@ describe('Treetop', () => {
     this.xhr.onCreate = function (xhr) {
       requests.push(xhr);
     };
+    var config = treetop.config();
+    // reset all mount spys
+    Object.values(config.mountTags).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.unmountTags).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
   });
 
   afterEach(() => {
@@ -369,7 +375,20 @@ describe('Treetop', () => {
       var el = document.getElementById("test");
       expect(el.tagName).to.equal("TEST-NODE");
       var mount = config.mountTags["test-node"];
-      expect(mount.calledWith(el)).to.be.true;
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+
+    it('should not have called unmount on the new element', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test");
+      expect(el.tagName).to.equal("TEST-NODE");
+      var unmount = config.unmountTags["test-node"];
+      expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
     it('should have called the mount on the attribute', () => {
@@ -381,7 +400,19 @@ describe('Treetop', () => {
       );
       var el = document.getElementById("test-child");
       var mount = config.mountAttrs["test"]
-      expect(mount.calledWith(el)).to.be.true;
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+
+    it('should not have called unmount on the new element', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test-child");
+      var unmount = config.unmountAttrs["test"]
+      expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
     describe('when unmounted', () => {
@@ -405,12 +436,12 @@ describe('Treetop', () => {
 
       it('should have called the unmount on the element', () => {
         var unmount = config.unmountTags["test-node"]
-        expect(unmount.calledWith(el)).to.be.true;
+        expect(calledWithStrict(unmount, el)).to.be.true;
       });
 
       it('should have called the unmount on the attribute', () => {
         var unmount = config.unmountAttrs["test"]
-        expect(unmount.calledWith(el2)).to.be.true;
+        expect(calledWithStrict(unmount, el2)).to.be.true;
       });
     });
 
@@ -435,12 +466,12 @@ describe('Treetop', () => {
 
       it('should have called the unmount on the element', () => {
         var unmount = config.unmountTags["test-node"]
-        expect(unmount.calledWith(el)).to.be.true;
+        expect(calledWithStrict(unmount, el)).to.be.true;
       });
 
       it('should have called the unmount on the attribute', () => {
         var unmount = config.unmountAttrs["test"]
-        expect(unmount.calledWith(el2)).to.be.true;
+        expect(calledWithStrict(unmount, el2)).to.be.true;
       });
     });
 
@@ -455,8 +486,8 @@ describe('Treetop', () => {
         '<test-node id="test"><p id="test-child" test test2>New Cell!</p></test-node>'
       );
       el = document.getElementById("test-child");
-      expect(mount.calledWith(el)).to.be.true;
-      expect(mount2.calledWith(el)).to.be.true;
+      expect(calledWithStrict(mount, el)).to.be.true;
+      expect(calledWithStrict(mount2, el)).to.be.true;
     });
 
     it('should have called unmount on the same element multiple times', () => {
@@ -476,9 +507,72 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<div id="test">replaced</div>'
       );
-      expect(unmount.calledWith(el)).to.be.true;
-      expect(unmount2.calledWith(el)).to.be.true;
+      expect(calledWithStrict(unmount, el)).to.be.true;
+      expect(calledWithStrict(unmount2, el)).to.be.true;
+    });
+  });
+
+  describe('treetop.updateElement', () => {
+    beforeEach(() => {
+      document.body.innerHTML = "";
+    });
+
+    it('should allow an element to be created outside and mounted normally', () => {
+      document.body.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></table>';
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      treetop.updateElement(el, document.getElementById("test"));
+      expect(document.body.textContent).to.equal("New Cell!");
+    });
+
+    it('should mount components on the new element', () => {
+      document.body.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></table>';
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      el.setAttribute("test", "something");
+      treetop.updateElement(el, document.getElementById("test"));
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, el)).to.be.true;
+      var unmount = window.treetop.config().unmountAttrs["test"];
+      expect(calledWithStrict(unmount, el)).to.be.false;
+    });
+
+    it('should unmount components on the old element', () => {
+      document.body.innerHTML = '<table><tr><td test id="test-cell">OLD CELL</td></tr></table>';
+      var oldElm = document.getElementById("test-cell")
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      el.setAttribute("test", "something");
+      treetop.updateElement(el, oldElm);
+      var unmount = window.treetop.config().unmountAttrs["test"];
+      expect(calledWithStrict(unmount, oldElm)).to.be.true;
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, oldElm)).to.be.false;
     });
   });
 });
 
+
+/// utils
+//
+
+/**
+ * stragely, sinon does not provide a built in assertion like this
+ */
+function calledWithStrict(spy) {
+  var calls = spy.getCalls();
+  var call;
+  var args = Array.prototype.slice.call(arguments, 1)
+  SCAN:
+  for (var i = 0, len = calls.length; i < len; i++) {
+    call = calls[i];
+    if (call.args.length !== args.length) continue SCAN;
+    for (var j = 0, lenj = args.length; j < lenj; j++) {
+      if (call.args[j] !== args[j]) {
+        continue SCAN;
+      }
+    }
+    return true;
+  }
+  return false;
+}

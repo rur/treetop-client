@@ -92,6 +92,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.unmountTags["body"] = BodyComponent.unmount;
         }
 
+        // TODO: Check for document ready state before mounting,
+        //       here we assume the developer has done so.
         // point of no return
         $.mount(document.body);
         window.onpopstate = function (_evt) {
@@ -99,6 +101,32 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.browserPopState(evt);
         };
     };
+
+    /**
+     * Update a existing DOM node with a new element. The elements will be composed
+     * and (un)mounted in the normal Treetop way.
+     *
+     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} prev: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.updateElement = function (next, prev) {
+        if (!next || !prev) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (next.parentNode) {
+            throw new Error(
+                "Treetop: Cannot update with an element that "+
+                "is already attached to a parent node"
+            );
+        } else if (!prev.parentNode) {
+            throw new Error(
+                "Treetop: Cannot update an element that is not attached to the DOM"
+            );
+        }
+        $.updateElement(next, prev);
+    };
+
 
     /**
      * Get a copy of the treetop configuration,
@@ -392,6 +420,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.mount(next);
             $.unmount(prev);
         }
+    },
+
+
+    asyncMountFn: function (next, prev) {
+        var $ = this;
+        return function () {
+            $.mount(next);
+            $.unmount(prev);
+        };
     },
 
     /**
