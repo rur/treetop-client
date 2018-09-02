@@ -47,6 +47,16 @@ describe('Treetop', () => {
     this.xhr.restore();
   });
 
+  it('should not allow init to be called more than once', () => {
+    try {
+      window.treetop.init();
+    } catch (err) {
+      expect(err.toString()).to.contain("Treetop: init has already been called")
+      return
+    }
+    throw Error("An error was not thrown");
+  });
+
   describe('issue basic GET request', () => {
     it('should have issued a request', () => {
       window.treetop.request("GET", "/test");

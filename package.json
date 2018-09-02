@@ -4,7 +4,8 @@
   "description": "Browser client library for Treetop enabled web application",
   "main": "treetop.js",
   "scripts": {
-    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js"
+    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js",
+    "autotest": "mocha --watch ./test-setup.js ./treetop.js ./treetop.spec.js"
   },
   "devDependencies": {
     "chai": "^4.1.2",

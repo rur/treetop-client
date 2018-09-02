@@ -12,6 +12,3 @@ const dom = new jsdom.JSDOM(DEFAULT_HTML, {
 })
 global.document = dom.window.document
 global.window = dom.window
-
-global.window.requestAnimationFrame = sinon.spy();
-global.window.cancelAnimationFrame = sinon.spy();

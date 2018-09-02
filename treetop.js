@@ -40,6 +40,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         if (initCalled) {
             throw Error("Treetop: init has already been called");
         }
+        initCalled = true;
         var config = _config instanceof Object ? _config : {};
         var mountDefault;
 
