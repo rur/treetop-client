@@ -5,7 +5,7 @@ const chai = require('chai');
 const expect = chai.expect;
 
 window.treetop.init({
-  mountDefault: true,
+  treetopAttr: false,
   mountTags: {
     "test-node": sinon.spy()
   },

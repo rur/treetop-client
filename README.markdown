@@ -89,13 +89,13 @@ This custom compose implementation will be triggered if both new and old element
 ```
 
 ### Config Getter
-To obtain the active configuration, for debug purposes, a copy can be read out like so.
+To obtain the active configuration for debug purposes, a copy can be read out like so.
 ```
 var cfg = treetop.config()
 ```
 
 ### Request Errors
-When certain errors occurs while attempting to handle a Treetop request, response handling can be delegated to a function. The relevant XMLHttpRequest instance will be passed to the handler.
+When the treetop client is not capable of handling the result of a request, handling can be delegated to a user defined function. The relevant XMLHttpRequest instance will be passed to the handler.
 
 `onUnsupported`, when a server responds to a Treetop request with an unsupported content type
 

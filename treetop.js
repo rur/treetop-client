@@ -42,7 +42,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         initCalled = true;
         var config = _config instanceof Object ? _config : {};
-        var mountDefault;
+        var treetopAttr;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -74,8 +74,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                     $.onUnsupported = config[key];
                 }
                 break;
-            case "mountdefault":
-                mountDefault = !(config[key] === false);
+            case "treetopattr":
+                treetopAttr = !(config[key] === false);
                 continue;
             default:
                 throw new Error(
@@ -84,7 +84,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
         }
 
-        if (mountDefault) {
+        if (treetopAttr) {
             // apply default components
             $.mountTags["body"] = BodyComponent.mount;
             // NOTE: realistically, body will never be 'unmounted', this
