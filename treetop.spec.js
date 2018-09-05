@@ -4,45 +4,90 @@ const sinon = require('sinon');
 const chai = require('chai');
 const expect = chai.expect;
 
+window.treetop.init({
+  treetopAttr: false,
+  mountTags: {
+    "test-node": sinon.spy()
+  },
+  mountAttrs: {
+    "test": sinon.spy(),
+    "test2": sinon.spy(),
+  },
+  unmountTags: {
+    "test-node": sinon.spy()
+  },
+  unmountAttrs: {
+    "test": sinon.spy(),
+    "test2": sinon.spy()
+  },
+  compose: {
+    "test": (next, prev) => {
+      Array.from(next.children).forEach(child => {
+        prev.appendChild(child);
+      });
+    }
+  }
+});
 
 describe('Treetop', () => {
   'strict mode';
-  var requests;
-  var treetop;
+  var treetop, requests;
 
   beforeEach(() => {
     this.xhr = sinon.useFakeXMLHttpRequest();
     global.XMLHttpRequest = this.xhr;
     requests = [];
     treetop = window.treetop;
-    this.xhr.onCreate = req => requests.push(req);
-    treetop.push();
-    window.requestAnimationFrame.lastCall.args[0]();
+    this.xhr.onCreate = function (xhr) {
+      requests.push(xhr);
+    };
+    var config = treetop.config();
+    // reset all mount spys
+    Object.values(config.mountTags).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.unmountTags).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
   });
 
   afterEach(() => {
     this.xhr.restore();
-    window.requestAnimationFrame.resetHistory();
-    window.cancelAnimationFrame.resetHistory();
+  });
+
+  it('should not allow init to be called more than once', () => {
+    try {
+      window.treetop.init();
+    } catch (err) {
+      expect(err.toString()).to.contain("Treetop: init has already been called")
+      return
+    }
+    throw Error("An error was not thrown");
   });
 
   describe('issue basic GET request', () => {
-    var req = null;
-    beforeEach(() => {
-      treetop.request("GET", "/test");
-      req = requests[0];
+    it('should have issued a request', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req).to.exist
     });
 
-    it('should have issued a request', () => expect(req).to.exist);
-
     it('should have issued a request with the method and url', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("GET");
     });
 
-    it('should have added the treetop header', () => expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE));
+    it('should have added the treetop header', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE)
+    });
 
-    it('should have no body', () => expect(req.requestBody).to.be.null);
+    it('should have no body', () => {
+      window.treetop.request("GET", "/test");
+      var req = requests[0];
+      expect(req.requestBody).to.be.null
+    });
   });
 
   describe('issue basic POST request', () => {
@@ -149,7 +194,7 @@ describe('Treetop', () => {
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test">sooner!</em>'
-      );
+     );
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
@@ -208,15 +253,6 @@ describe('Treetop', () => {
       el.setAttribute("id", "test");
       el.setAttribute("treetop-compose", "test");
       el.innerHTML = "<li>1</li><li>2</li><li>3</li>";
-      treetop.push({
-        "compose": {
-          "test": (next, prev) => {
-            Array.from(next.children).forEach(child => {
-              prev.appendChild(child);
-            });
-          }
-        }
-      });
       document.body.appendChild(el);
     });
 
@@ -286,7 +322,6 @@ describe('Treetop', () => {
       this.el.textContent = "Before!";
       this.el.setAttribute("id", "test");
       document.body.appendChild(this.el);
-      return treetop.mount(document.body);
     });
 
     afterEach(() => document.body.removeChild(document.getElementById("test")));
@@ -313,23 +348,16 @@ describe('Treetop', () => {
   });
 
   describe('binding components', () => {
+    var config;
     beforeEach(() => {
-      this.el = document.createElement("test-node");
-      this.el.setAttribute("id", "test");
-      document.body.appendChild(this.el);
-      this.el2 = document.createElement("div");
-      this.el2.setAttribute("id", "test2");
-      this.el2.setAttribute("test-node", 123);
-      document.body.appendChild(this.el2);
-      // component definition:
-      this.component = {
-        tagName: "test-node",
-        attrName: "test-node",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      treetop.push(this.component);
-      window.requestAnimationFrame.lastCall.args[0]();
+      var el = document.createElement("p");
+      el.setAttribute("id", "test");
+      document.body.appendChild(el);
+      var el2 = document.createElement("div");
+      el2.setAttribute("id", "test2");
+      el2.setAttribute("test-node", 123);
+      document.body.appendChild(el2);
+      config = window.treetop.config();
     });
 
     afterEach(() => {
@@ -338,17 +366,68 @@ describe('Treetop', () => {
     });
 
     it('should have called the mount on the element', () => {
-      expect(this.component.mount.calledWith(this.el)).to.be.true;
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test");
+      expect(el.tagName).to.equal("TEST-NODE");
+      var mount = config.mountTags["test-node"];
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+
+    it('should not have called unmount on the new element', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test");
+      expect(el.tagName).to.equal("TEST-NODE");
+      var unmount = config.unmountTags["test-node"];
+      expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
     it('should have called the mount on the attribute', () => {
-      expect(this.component.mount.calledWith(this.el2)).to.be.true;
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test-child");
+      var mount = config.mountAttrs["test"]
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+
+    it('should not have called unmount on the new element', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+      );
+      var el = document.getElementById("test-child");
+      var unmount = config.unmountAttrs["test"]
+      expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
     describe('when unmounted', () => {
+      var el, el2;
       beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        );
+        el = document.getElementById("test");
+        el2 = document.getElementById("test-child");
+        treetop.request("GET", "/test");
+        requests[1].respond(
           200,
           { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
           '<div id="test">after!</div><div id="test2">after2!</div>'
@@ -356,62 +435,144 @@ describe('Treetop', () => {
       });
 
       it('should have called the unmount on the element', () => {
-        expect(this.component.unmount.calledWith(this.el)).to.be.true;
+        var unmount = config.unmountTags["test-node"]
+        expect(calledWithStrict(unmount, el)).to.be.true;
       });
 
       it('should have called the unmount on the attribute', () => {
-        expect(this.component.unmount.calledWith(this.el2)).to.be.true;
+        var unmount = config.unmountAttrs["test"]
+        expect(calledWithStrict(unmount, el2)).to.be.true;
       });
+    });
+
+    describe('when unmounted', () => {
+      var el, el2;
+      beforeEach(() => {
+        treetop.request("GET", "/test");
+        requests[0].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        );
+        el = document.getElementById("test");
+        el2 = document.getElementById("test-child");
+        treetop.request("GET", "/test");
+        requests[1].respond(
+          200,
+          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          '<div id="test">after!</div><div id="test2">after2!</div>'
+        );
+      });
+
+      it('should have called the unmount on the element', () => {
+        var unmount = config.unmountTags["test-node"]
+        expect(calledWithStrict(unmount, el)).to.be.true;
+      });
+
+      it('should have called the unmount on the attribute', () => {
+        var unmount = config.unmountAttrs["test"]
+        expect(calledWithStrict(unmount, el2)).to.be.true;
+      });
+    });
+
+    it('should have called mount on the same component multiple times', () => {
+      var el;
+      var mount = config.mountAttrs["test"]
+      var mount2 = config.mountAttrs["test2"]
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test test2>New Cell!</p></test-node>'
+      );
+      el = document.getElementById("test-child");
+      expect(calledWithStrict(mount, el)).to.be.true;
+      expect(calledWithStrict(mount2, el)).to.be.true;
+    });
+
+    it('should have called unmount on the same element multiple times', () => {
+      var el;
+      var unmount = config.unmountAttrs["test"]
+      var unmount2 = config.unmountAttrs["test2"]
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<test-node id="test"><p id="test-child" test test2>New Data</p></test-node>'
+      );
+      el = document.getElementById("test-child");
+      treetop.request("GET", "/test");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<div id="test">replaced</div>'
+      );
+      expect(calledWithStrict(unmount, el)).to.be.true;
+      expect(calledWithStrict(unmount2, el)).to.be.true;
     });
   });
 
-  describe('binding two components', () => {
+  describe('treetop.updateElement', () => {
     beforeEach(() => {
-      this.el = document.createElement("test-node");
-      this.el.setAttribute("id", "test");
-      document.body.appendChild(this.el);
-      this.el2 = document.createElement("div");
-      this.el2.setAttribute("id", "test2");
-      this.el2.setAttribute("test-node", 123);
-      document.body.appendChild(this.el2);
-      // component definition:
-      this.component = {
-        tagName: "test-node",
-        attrName: "test-node",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      this.component2 = {
-        tagName: "test-node",
-        attrName: "test-node",
-        mount: sinon.spy(),
-        unmount: sinon.spy()
-      };
-      treetop.push(this.component);
-      treetop.push(this.component2);
-      window.requestAnimationFrame.lastCall.args[0]();
+      document.body.innerHTML = "";
     });
 
-    afterEach(() => {
-      document.body.removeChild(document.getElementById("test"));
-      document.body.removeChild(document.getElementById("test2"));
+    it('should allow an element to be created outside and mounted normally', () => {
+      document.body.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></table>';
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      treetop.updateElement(el, document.getElementById("test"));
+      expect(document.body.textContent).to.equal("New Cell!");
     });
 
-    it('should have called mount on component 1 for the tagName', () => {
-      expect(this.component.mount.calledWith(this.el)).to.be.true;
+    it('should mount components on the new element', () => {
+      document.body.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></table>';
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      el.setAttribute("test", "something");
+      treetop.updateElement(el, document.getElementById("test"));
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, el)).to.be.true;
+      var unmount = window.treetop.config().unmountAttrs["test"];
+      expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
-    it('should have called mount on component 1 for the attrName', () => {
-      expect(this.component.mount.calledWith(this.el2)).to.be.true;
-    });
-
-    it('should have called mount on component 2 for the tagName', () => {
-      expect(this.component2.mount.calledWith(this.el)).to.be.true;
-    });
-
-    it('should have called mount on component 2 for the attrName', () => {
-      expect(this.component2.mount.calledWith(this.el2)).to.be.true;
+    it('should unmount components on the old element', () => {
+      document.body.innerHTML = '<table><tr><td test id="test-cell">OLD CELL</td></tr></table>';
+      var oldElm = document.getElementById("test-cell")
+      var el = document.createElement("td");
+      el.textContent = "New Cell!";
+      el.setAttribute("test", "something");
+      treetop.updateElement(el, oldElm);
+      var unmount = window.treetop.config().unmountAttrs["test"];
+      expect(calledWithStrict(unmount, oldElm)).to.be.true;
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, oldElm)).to.be.false;
     });
   });
 });
 
+
+/// utils
+//
+
+/**
+ * stragely, sinon does not provide a built in assertion like this
+ */
+function calledWithStrict(spy) {
+  var calls = spy.getCalls();
+  var call;
+  var args = Array.prototype.slice.call(arguments, 1)
+  SCAN:
+  for (var i = 0, len = calls.length; i < len; i++) {
+    call = calls[i];
+    if (call.args.length !== args.length) continue SCAN;
+    for (var j = 0, lenj = args.length; j < lenj; j++) {
+      if (call.args[j] !== args[j]) {
+        continue SCAN;
+      }
+    }
+    return true;
+  }
+  return false;
+}

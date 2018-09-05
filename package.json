@@ -1,10 +1,11 @@
 {
   "name": "treetop-client",
-  "version": "0.4.1",
+  "version": "0.5.2",
   "description": "Browser client library for Treetop enabled web application",
   "main": "treetop.js",
   "scripts": {
-    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js"
+    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js",
+    "autotest": "mocha --watch ./test-setup.js ./treetop.js ./treetop.spec.js"
   },
   "devDependencies": {
     "chai": "^4.1.2",

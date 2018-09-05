@@ -1,59 +1,153 @@
 /* global window, document, history, HTMLTemplateElement, XMLHttpRequest, ActiveXObject */
 
-window.treetop = (function ($, config) {
+window.treetop = (function ($, BodyComponent, FormSerializer) {
     "use strict";
+    if (window.treetop !== void 0) {
+        // throwing an error here is important since it prevents window.treetop from being reassigned
+        throw Error("Treetop: treetop global is already defined")
+    }
+
     // First check browser support for essential modern features
     if (typeof window.HTMLTemplateElement === 'undefined') {
-            throw Error("treetop-client: HTMLTemplateElement not supported, a polyfil should be used");
+        throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
     if (!(window.history && typeof window.history.pushState === 'function')) {
-            throw Error("treetop-client: HTML5 History API not supported, a polyfil should be used");
+        throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
-    // Triggered when treetop receives a response that it cannot handle
-    // This generally means a non-treetop response was captured. The xhr instance
-    // will be passed to the signal handler.
-    var onUnsupported = $.simpleSignal();
+    var initCalled = false;
 
     /**
      * Treetop API Constructor
      *
      * @constructor
-     * @param {Array|Treetop} setup GA style initialization
      */
-    function Treetop(setup) {
-        if (setup instanceof Treetop) {
-            this._setup = setup._setup;
-        } else if (setup instanceof Array) {
-            this._setup = setup;
+    function Treetop() {}
+
+    /**
+     * Configure treetop and mount document.body
+     *
+     * @param  {Object} def Dict containing complete page configuration.
+     * @throws  {Error} If a config key isn't recognized or `init` was
+     *                  called previously
+     */
+    Treetop.prototype.init = function (_config) {
+        // Since the DOM is stateful, mounting is not a
+        // reversible operation. It is crucial therefore that
+        // the initial setup process only ever happens once during
+        // the lifetime of a page. After that elements will only
+        // be mounted and unmounted when being attached or detached
+        // from the DOM.
+        if (initCalled) {
+            throw Error("Treetop: init has already been called");
         }
-        this._setup = (this._setup || []).slice();
-        $.bindComponentsAsync(this._setup);
-    }
+        initCalled = true;
+        var config = _config instanceof Object ? _config : {};
+        var treetopAttr;
 
-    /**
-     * Add a component definition
-     * @param  {Object} def Dict containing component
-     */
-    Treetop.prototype.push = function (def) {
-        if (def) this._setup.push(def);
-        $.bindComponentsAsync(this._setup);
+        for (var key in config) {
+            if (!config.hasOwnProperty(key)) {
+                continue;
+            }
+            switch (key.toLowerCase()) {
+            case "mounttags":
+                $.mountTags = $.copyConfig(config[key])
+                break;
+            case "mountattrs":
+                $.mountAttrs = $.copyConfig(config[key])
+                break;
+            case "unmounttags":
+                $.unmountTags = $.copyConfig(config[key])
+                break;
+            case "unmountattrs":
+                $.unmountAttrs = $.copyConfig(config[key])
+                break;
+            case "compose":
+                $.compose = $.copyConfig(config[key])
+                break;
+            case "onnetworkerror":
+                if (typeof config[key] === "function") {
+                    $.onNetworkError = config[key];
+                }
+                break;
+            case "onunsupported":
+                if (typeof config[key] === "function") {
+                    $.onUnsupported = config[key];
+                }
+                break;
+            case "treetopattr":
+                treetopAttr = !(config[key] === false);
+                continue;
+            default:
+                throw new Error(
+                    "Treetop: unknown configuration property '" + key + "'"
+                );
+            }
+        }
+
+        if (treetopAttr) {
+            // apply default components
+            $.mountTags["body"] = BodyComponent.mount;
+            // NOTE: realistically, body will never be 'unmounted', this
+            // should not be necessary.
+            $.unmountTags["body"] = BodyComponent.unmount;
+        }
+
+        // TODO: Check for document ready state before mounting,
+        //       here we assume the developer has done so.
+        // point of no return
+        $.mount(document.body);
+        window.onpopstate = function (_evt) {
+            var evt = _evt || window.event;
+            $.browserPopState(evt);
+        };
     };
 
     /**
-     * trigger mount event on a node and it's subtree
-     * @param  {HTMLElement} el
+     * Update a existing DOM node with a new element. The elements will be composed
+     * and (un)mounted in the normal Treetop way.
+     *
+     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} prev: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mount = function (el) {
-        $.mount(el);
+    Treetop.prototype.updateElement = function (next, prev) {
+        if (!next || !prev) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (next.parentNode) {
+            throw new Error(
+                "Treetop: Cannot update with an element that "+
+                "is already attached to a parent node"
+            );
+        } else if (!prev.parentNode) {
+            throw new Error(
+                "Treetop: Cannot update an element that is not attached to the DOM"
+            );
+        }
+        $.updateElement(next, prev);
     };
 
+
     /**
-     * trigger mount event on a node and it's subtree
-     * @param  {HTMLElement} el
+     * Get a copy of the treetop configuration,
+     * useful for debugging.
+     *
+     * Note, mutating this object will not affect the configuration.
+     *
+     * @returns {Object} copy of internal configuration
      */
-    Treetop.prototype.unmount = function (el) {
-        $.unmount(el);
+    Treetop.prototype.config = function () {
+        return {
+            mountTags: $.copyConfig($.mountTags),
+            mountAttrs: $.copyConfig($.mountAttrs),
+            unmountTags: $.copyConfig($.unmountTags),
+            unmountAttrs: $.copyConfig($.unmountAttrs),
+            compose: $.copyConfig($.compose),
+            onNetworkError: $.onNetworkError,
+            onUnsupported: $.onUnsupported,
+        };
     };
+
 
     /**
      * Send XHR request to Treetop endpoint. The response is handled
@@ -69,43 +163,54 @@ window.treetop = (function ($, config) {
         if (!$.METHODS[method.toUpperCase()]) {
             throw new Error("Treetop: Unknown request method '" + method + "'");
         }
-        var req = (XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
-        req.open(method.toUpperCase(), url, true);
-        req.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
-        if (contentType) {
-            req.setRequestHeader("content-type", contentType);
+
+        var xhr = $.createXMLHTTPObject();
+        if (!xhr) {
+            throw new Error("Treetop: XHR is not supproted by this browser");
         }
         var requestID = $.lastRequestID = $.lastRequestID + 1
-        req.onload = function () {
+        xhr.open(method.toUpperCase(), url, true);
+        xhr.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
+        if (contentType) {
+            xhr.setRequestHeader("content-type", contentType);
+        }
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4 || xhr.status < 100) {
+                return
+            }
             // check if the response can be processed by treetop client library,
             // otherwise trigger 'onUnsupported' signal
-            if (req.getResponseHeader("x-treetop-see-other") != null) {
+            if (xhr.getResponseHeader("x-treetop-see-other") !== null) {
                 // Redirect browser window
-                window.location = req.getResponseHeader("x-treetop-see-other");
+                window.location = xhr.getResponseHeader("x-treetop-see-other");
 
-            } else if (req.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
+            } else if (xhr.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
                 // this response is part of a larger page, add a history entry before processing
-                var responseURL = req.getResponseHeader("x-response-url") || req.responseURL;
+                var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
                 // NOTE: This HTML5 feature will require a polyfill for some browsers
                 window.history.pushState({
                     treetop: true,
                 }, "", responseURL);
-                $.xhrProcess(req, requestID, true);
+                $.xhrProcess(xhr, requestID, true);
 
-            } else if(req.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
+            } else if(xhr.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
                 // this is a fragment response, just process the update
-                $.xhrProcess(req, requestID, false);
+                $.xhrProcess(xhr, requestID, false);
 
-            } else {
+            } else if(typeof $.onUnsupported === "function") {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.
-                onUnsupported.trigger(req);
+                $.onUnsupported(xhr);
             }
         };
-        req.send(body || null);
+        xhr.onerror = function () {
+            if(typeof $.onNetworkError === "function") {
+                // Network level error, likely a connection problem
+                $.onNetworkError(xhr);
+            }
+        };
+        xhr.send(body || null);
     };
-
-    Treetop.prototype.onUnsupported = onUnsupported.add;
 
     /**
      * treetop.submit will trigger an XHR request derived from the state
@@ -122,29 +227,33 @@ window.treetop = (function ($, config) {
                 );
             }, 0);
         }
-        new $.FormSerializer(formElement, dataHandler);
+        new FormSerializer(formElement, dataHandler);
     }
 
     Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
     Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
 
     // api
-    return new Treetop(config);
+    return new Treetop();
 }({
     //
-    // Private
+    // Treetop Internal
     //
     /**
-     * Store the component definitions by tagName
-     * @type {Object} index
+     * Store configuration
      */
-    bindTagName: null,
+    mountTags: {},
+    mountAttrs: {},
+    unmountTags: {},
+    unmountAttrs: {},
+    onUnsupported: null,
+    onNetworkError: null,
 
     /**
-     * Store the component definitions by attrName
-     * @type {Object} index
+     * Store the treetop composition definitions
+     * @type {Object} object reference
      */
-    bindAttrName: null,
+    compose: {},
 
     /**
      * Track order of requests as well as the elements that were updated.
@@ -153,12 +262,6 @@ window.treetop = (function ($, config) {
      */
     lastRequestID: 0,
     updates: {},
-
-    /**
-     * Store the treetop composition definitions
-     * @type {Object} object reference
-     */
-    composition: {},
 
     /**
      * White-list of request methods types
@@ -204,7 +307,7 @@ window.treetop = (function ($, config) {
         i = len = temp = child = old = nodes = undefined;
 
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
-        var temp = document.createElement('template');
+        temp = document.createElement('template');
         temp.innerHTML = xhr.responseText;
         nodes = new Array(temp.content.children.length);
         for (i = 0, len = temp.content.children.length; i < len; i++) {
@@ -227,9 +330,21 @@ window.treetop = (function ($, config) {
                 } else if (child.id) {
                     $.updates["#" + child.id] = requestID;
                 }
-                $.compose(child, old);
+                $.updateElement(child, old);
             }
         }
+    },
+
+    /**
+     * document history pop state event handler
+     *
+     * @param {PopStateEvent} e
+     */
+    browserPopState: function () {
+        "use strict";
+        // force browser to refresh the page when the back
+        // nav is triggered, seems to be the best thing to do
+        location.reload();
     },
 
     /**
@@ -246,15 +361,15 @@ window.treetop = (function ($, config) {
         var parentUpdate = 0;
         if (node === document.body) {
             if ("BODY" in this.updates) {
-                updatedID = this.updates["BODY"]
+                updatedID = this.updates["BODY"];
             }
             // dont descent further
             return updatedID;
         } else if (node.id && "#" + node.id in this.updates) {
-            updatedID = this.updates["#" + node.id]
+            updatedID = this.updates["#" + node.id];
         }
         if (node.parentNode) {
-            parentUpdate = this.getLastUpdate(node.parentNode)
+            parentUpdate = this.getLastUpdate(node.parentNode);
             if (parentUpdate > updatedID) {
                 return parentUpdate;
             }
@@ -278,16 +393,23 @@ window.treetop = (function ($, config) {
      * @param  {HTMLElement} next The element recently loaded from the API
      * @param  {HTMLElement} prev The element currently within the DOM
     */
-    compose: function(next, prev) {
+    updateElement: function(next, prev) {
         var $ = this;
         var nextCompose = next.getAttribute("treetop-compose");
         var prevCompose = prev.getAttribute("treetop-compose");
         var compose = $.defaultComposition;
-        if (typeof nextCompose === "string" && typeof prevCompose === "string") {
+        if (typeof nextCompose === "string" &&
+            typeof prevCompose === "string"
+        ) {
             nextCompose = nextCompose.toLowerCase();
             prevCompose = prevCompose.toLowerCase();
-            if (nextCompose === prevCompose && nextCompose in $.composition && typeof $.composition[nextCompose] === "function") {
-                compose = $.composition[nextCompose];
+            if (
+              nextCompose.length &&
+              nextCompose === prevCompose &&
+              $.compose.hasOwnProperty(nextCompose) &&
+              typeof $.compose[nextCompose] === "function"
+            ) {
+                compose = $.compose[nextCompose];
             }
         }
 
@@ -300,460 +422,147 @@ window.treetop = (function ($, config) {
         }
     },
 
-    asyncMountFn: function (n, p) {
+
+    asyncMountFn: function (next, prev) {
         var $ = this;
         return function () {
-            if (n !== null && p !== null) {
-                $.mount(n);
-                $.unmount(p);
-                n = null;
-                p = null;
-            }
+            $.mount(next);
+            $.unmount(prev);
         };
     },
 
     /**
-     * Attach an external component to an element and its children depending
-     * on the node name or its attributes
+     * Trigger mount on provided element and all children in
+     * depth first order.
      *
      * @param  {HTMLElement} el
      */
     mount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comps, comp, attr;
-        if (el.nodeType !== 1 && el.nodeType !== 10) {
+        var i, len, j, comp, name;
+        if (el.nodeType !== 1) {
+            // this is not an ELEMENT_NODE
             return;
         }
+        // depth first recursion
         for (i = 0; i < el.children.length; i++) {
             $.mount(el.children[i]);
         }
-        comps = $.bindTagName.get(el.tagName);
-        len = comps.length;
-        for (i = 0; i < len; i++) {
-            comp = comps[i];
-            if (comp && typeof comp.mount === "function") {
-                comp.mount(el);
+        // mount tag component first
+        name = el.tagName.toLowerCase();
+        if ($.mountTags.hasOwnProperty(name)) {
+            comp = $.mountTags[name];
+            if (typeof comp === "function") {
+                comp(el);
             }
         }
+        // mount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            attr = el.attributes[j];
-            comps = $.bindAttrName.get(attr.name);
-            len = comps.length;
-            for (i = 0; i < len; i++) {
-                comp = comps[i];
-                if (comp && typeof comp.mount === "function") {
-                    comp.mount(el);
+            name = el.attributes[j].name.toLowerCase();
+            if ($.mountAttrs.hasOwnProperty(name)) {
+                comp = $.mountAttrs[name];
+                if (typeof comp === "function") {
+                    comp(el);
                 }
             }
         }
     },
 
     /**
-     * Trigger unmount handler on all Treetop mounted components attached
-     * to a DOM Element
+     * Trigger unmount on provided element and all children in
+     * depth first order.
      *
      * @param  {HTMLElement} el
      */
     unmount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comps, comp, attr;
-        // TODO: do this with a stack not recursion
+        var i, len, j, comp, name;
+        if (el.nodeType !== 1) {
+            // this is not an ELEMENT_NODE
+            return;
+        }
+        // depth first recursion
         for (i = 0; i < el.children.length; i++) {
             $.unmount(el.children[i]);
         }
-        comps = $.bindTagName.get(el.tagName);
-        len = comps.length;
-        for (i = 0; i < len; i++) {
-            comp = comps[i];
-            if (comp && typeof comp.unmount === "function") {
-                comp.unmount(el);
+        // unmount tag component first
+        name = el.tagName.toLowerCase();
+        if ($.unmountTags.hasOwnProperty(name)) {
+            comp = $.unmountTags[name];
+            if (typeof comp === "function") {
+                comp(el);
             }
         }
+        // unmount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
-            attr = el.attributes[j];
-            comps = $.bindAttrName.get(attr.name);
-            len = comps.length;
-            for (i = 0; i < len; i++) {
-                comp = comps[i];
-                if (comp && typeof comp.unmount === "function") {
-                    comp.unmount(el);
+            name = el.attributes[j].name.toLowerCase();
+            if ($.unmountAttrs.hasOwnProperty(name)) {
+                comp = $.unmountAttrs[name];
+                if (typeof comp === "function") {
+                    comp(el);
                 }
             }
         }
     },
 
-    /**
-     * index all component definitions and mount the full document
-     *
-     * @param  {Array} setup List of component definitions
-     */
-    bindComponents: function (setup) {
-        "use strict";
-        var $ = this;
-        var def, i, len = setup.length;
-        $.bindTagName = $.index();
-        $.bindAttrName = $.index();
-        for (i = 0; i < len; i++) {
-            def = setup[i];
-            if (def.compose instanceof Object) {
-                for (var prop in def.compose) {
-                    if (def.compose.hasOwnProperty(prop) && typeof def.compose[prop] === "function") {
-                        $.composition[prop.toLowerCase()] = def.compose[prop];
-                    }
-                }
-            } else {
-                if (def.tagName) {
-                    $.bindTagName.get(def.tagName.toUpperCase()).push(def);
-                }
-                if (def.attrName) {
-                    $.bindAttrName.get(def.attrName.toUpperCase()).push(def);
-                }
+    // see https://www.quirksmode.org/js/xmlhttp.html
+    XMLHttpFactories: [
+        function () {return new XMLHttpRequest()},
+        function () {return new ActiveXObject("Msxml2.XMLHTTP")},
+        function () {return new ActiveXObject("Msxml3.XMLHTTP")},
+        function () {return new ActiveXObject("Microsoft.XMLHTTP")}
+    ],
+
+    createXMLHTTPObject: function() {
+        var xmlhttp = false;
+        for (var i = 0; i < this.XMLHttpFactories.length; i++) {
+            try {
+                xmlhttp = this.XMLHttpFactories[i]();
             }
+            catch (e) {
+                continue;
+            }
+            break;
         }
-        $.mount(document.body);
+        return xmlhttp;
     },
 
     /**
-     * index all component definitions some time before the next rendering frame
+     * Create copy of config object, all keys are tranformed to lowercase.
+     * Non-function type config values will be ignored.
      *
-     * @param  {Array} setup List of component definitions
-     */
-    bindComponentsAsync: (function () {
-        "use strict";
-        var id = null;
-        return function (setup) {
-            var $ = this;
-            $.cancelAnimationFrame(id);
-            id = $.requestAnimationFrame(function () {
-                $.bindComponents(setup);
-            });
-        };
-    }()),
-
-
-    /**
-     * x-browser requestAnimationFrame shim
+     * @param {object} source Dict {String => Function}
      *
-     * see: https://gist.github.com/paulirish/1579671
      */
-    requestAnimationFrame: (function () {
-        "use strict";
-        var requestAnimationFrame = window.requestAnimationFrame;
-        var lastTime = 0;
-        var vendors = ["ms", "moz", "webkit", "o"];
-        for (var i = 0; i < vendors.length && !requestAnimationFrame; ++i) {
-            requestAnimationFrame = window[vendors[i] + "RequestAnimationFrame"];
-        }
-
-        if (!requestAnimationFrame) {
-            requestAnimationFrame = function (callback) {
-                var currTime = new Date().getTime();
-                var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-                var id = window.setTimeout(function () {
-                    callback(currTime + timeToCall);
-                }, timeToCall);
-                lastTime = currTime + timeToCall;
-                return id;
-            };
-        }
-
-        return function (cb) {
-            // must be bound to window object
-            return requestAnimationFrame.call(window, cb);
-        };
-    }()),
-
-    /**
-     * x-browser cancelAnimationFrame shim
-     *
-     * see: https://gist.github.com/paulirish/1579671
-     */
-    cancelAnimationFrame: (function () {
-        "use strict";
-        var cancelAnimationFrame = window.cancelAnimationFrame;
-        var vendors = ["ms", "moz", "webkit", "o"];
-        for (var i = 0; i < vendors.length && !cancelAnimationFrame; ++i) {
-            cancelAnimationFrame = window[vendors[i] + "CancelAnimationFrame"] || window[vendors[i] + "CancelRequestAnimationFrame"];
-        }
-
-        if (!cancelAnimationFrame) {
-            cancelAnimationFrame = function (id) {
-                clearTimeout(id);
-            };
-        }
-
-        return function (cb) {
-            // must be bound to window object
-            return cancelAnimationFrame.call(window, cb);
-        };
-    }()),
-
-
-    /**
-     * Create a case insensitive dictionary
-     *
-     * @returns {Object} implementing { get(string)Array, has(string)bool }
-     */
-    index: function () {
-        "use strict";
-        var _store = {};
-        return {
-            get: function (key) {
-                if (typeof key != "string" || key === "") {
-                    throw new Error("Index: invalid key (" + key + ")");
-                }
-                // underscore used to avoid collisions with Object prototype
-                var _key = ("_" + key).toUpperCase();
-                if (_store.hasOwnProperty(_key)) {
-                    return _store[_key];
-                } else {
-                    return (_store[_key] = []);
-                }
-            },
-            has: function (key) {
-                if (typeof key != "string" || key === "") {
-                    return false;
-                }
-                var _key = ("_" + key).toUpperCase();
-                return _store.hasOwnProperty(_key);
+    copyConfig: function (source) {
+        var target = {};
+        // snippet from
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Polyfill
+        for (var key in source) {
+            if (typeof source[key] !== "function") {
+                continue;
             }
-        };
+            // Avoid bugs when hasOwnProperty is shadowed
+            if (Object.prototype.hasOwnProperty.call(source, key)) {
+               target[key.toLowerCase()] = source[key];
+            }
+        }
+        return target;
     },
 
-    /**
-     * The dumbest event dispatcher I can think of
-     *
-     * @return {Object} Object implementing the { add(Function)Function, trigger() } interface
-     */
-    simpleSignal: function () {
-        var listeners = [];
-        return {
-            add: function (f) {
-                var i = listeners.indexOf(f);
-                if (i === -1) {
-                    i = listeners.push(f) - 1;
-                }
-                return function remove() {
-                    listeners[i] = null;
-                };
-            },
-            trigger: function () {
-                for (var i = 0; i < listeners.length; i++) {
-                    if (typeof listeners[i] === "function") {
-                        listeners[i]();
-                    }
-                }
-            }
-        };
-    },
-
-    FormSerializer: (function () {
-        "use strict";
-        /**
-         * techniques:
-         */
-        var URLEN_GET = 0;   // GET method
-        var URLEN_POST = 1;  // POST method, enctype is application/x-www-form-urlencoded (default)
-        var PLAIN_POST = 2;  // POST method, enctype is text/plain
-        var MULTI_POST = 3;  // POST method, enctype is multipart/form-data
-
-        /**
-         * @private
-         * @constructor
-         * @param {FormElement}   elm       The form to be serialized
-         * @param {Function}      callback  Called when the serialization is complete (may be sync or async)
-         */
-        function FormSerializer(elm, callback) {
-            if (!(this instanceof FormSerializer)) {
-                return new FormSerializer(elm, callback);
-            }
-
-            var nFile, sFieldType, oField, oSegmReq, oFile;
-            var bIsPost = elm.method.toLowerCase() === "post";
-            var fFilter = window.encodeURIComponent;
-
-            this.onRequestReady = callback;
-            this.receiver = elm.action;
-            this.status = 0;
-            this.segments = [];
-
-            if (bIsPost) {
-                this.contentType = elm.enctype ? elm.enctype : "application\/x-www-form-urlencoded";
-                switch (this.contentType) {
-                case "multipart\/form-data":
-                    this.technique = MULTI_POST;
-
-                    try {
-                        // ...to let FormData do all the work
-                        this.data = new window.FormData(elm);
-                        if (this.data) {
-                            this.processStatus();
-                            return;
-                        }
-                    } catch (_) {
-                        "pass";
-                    }
-
-                    break;
-
-                case "text\/plain":
-                    this.technique = PLAIN_POST;
-                    fFilter = plainEscape;
-                    break;
-
-                default:
-                    this.technique = URLEN_POST;
-                }
-            } else {
-                this.technique = URLEN_GET;
-            }
-
-            for (var i = 0, len = elm.elements.length; i < len; i++) {
-                oField = elm.elements[i];
-                if (!oField.hasAttribute("name")) { continue; }
-                sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? oField.getAttribute("type").toUpperCase() : "TEXT";
-                if (sFieldType === "FILE" && oField.files.length > 0) {
-                    if (this.technique === MULTI_POST) {
-                        if (!window.FileReader) {
-                            throw new Error("Operation not supported: cannot upload a document via AJAX if FileReader is not supported");
-                        }
-                        /* enctype is multipart/form-data */
-                        for (nFile = 0; nFile < oField.files.length; nFile++) {
-                            oFile = oField.files[nFile];
-                            oSegmReq = new window.FileReader();
-                            oSegmReq.onload = this.fileReadHandler(oField, oFile);
-                            oSegmReq.readAsBinaryString(oFile);
-                        }
-                    } else {
-                        /* enctype is application/x-www-form-urlencoded or text/plain or method is GET: files will not be sent! */
-                        for (nFile = 0; nFile < oField.files.length; this.segments.push(fFilter(oField.name) + "=" + fFilter(oField.files[nFile++].name)));
-                    }
-                } else if ((sFieldType !== "RADIO" && sFieldType !== "CHECKBOX") || oField.checked) {
-                    /* field type is not FILE or is FILE but is empty */
-                    this.segments.push(
-                        this.technique === MULTI_POST ? /* enctype is multipart/form-data */
-                            "Content-Disposition: form-data; name=\"" + oField.name + "\"\r\n\r\n" + oField.value + "\r\n"
-                        : /* enctype is application/x-www-form-urlencoded or text/plain or method is GET */
-                            fFilter(oField.name) + "=" + fFilter(oField.value)
-                    );
-                }
-            }
-            this.processStatus();
-        }
-
-        /**
-         * Create FileReader onload handler
-         *
-         * @return {function}
-         */
-        FormSerializer.prototype.fileReadHandler = function (field, file) {
-            var self = this;
-            var index = self.segments.length;
-            self.segments.push(
-                "Content-Disposition: form-data; name=\"" + field.name + "\"; " +
-                "filename=\""+ file.name + "\"\r\n" +
-                "Content-Type: " + file.type + "\r\n\r\n");
-            self.status++;
-            return function (oFREvt) {
-                self.segments[index] += oFREvt.target.result + "\r\n";
-                self.status--;
-                self.processStatus();
-            };
-        };
-
-        /**
-         * Is called when a pass of serialization has completed.
-         *
-         * It will be called asynchronously if file reading is taking place.
-         */
-        FormSerializer.prototype.processStatus = function () {
-            if (this.status > 0) { return; }
-            /* the form is now totally serialized! prepare the data to be sent to the server... */
-            var sBoundary, method, url, hash, data, enctype;
-
-            switch (this.technique) {
-            case URLEN_GET:
-                method = "GET";
-                url = this.receiver.split("#");
-                hash = url.length > 1 ? "#" + url.splice(1).join("#") : "";  // preserve the hash
-                url = url[0].replace(/(?:\?.*)?$/, this.segments.length > 0 ? "?" + this.segments.join("&") : "") + hash;
-                data = null;
-                enctype = null;
-                break;
-
-            case URLEN_POST:
-            case PLAIN_POST:
-                method = "POST";
-                url = this.receiver;
-                enctype =  this.contentType;
-                data  = this.segments.join(this.technique === PLAIN_POST ? "\r\n" : "&");
-                break;
-
-            case MULTI_POST:
-                method = "POST";
-                url = this.receiver;
-                if (this.data) {
-                    // use native FormData multipart data
-                    data = this.data;
-                    enctype = null;
-                } else {
-                    // construct serialized multipart data manually
-                    sBoundary = "---------------------------" + Date.now().toString(16);
-                    enctype = "multipart\/form-data; boundary=" + sBoundary;
-                    data = "--" + sBoundary + "\r\n" + this.segments.join("--" + sBoundary + "\r\n") + "--" + sBoundary + "--\r\n";
-                    if (window.Uint8Array) {
-                        data = createArrayBuffer(data);
-                    }
-                }
-                break;
-            }
-
-            this.onRequestReady({
-                method: method,
-                action: url,
-                data: data,
-                enctype: enctype
-            });
-        };
-
-        /**
-         * Used to escape strings for encoding text/plain
-         *
-         * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
-         *
-         * @param  {stirng} sText
-         * @return {string}
-         */
-        function plainEscape(sText) {
-            return sText.replace(/[\s\=\\]/g, "\\$&");
-        }
-
-        /**
-         * @param  {string} str
-         * @return {ArrayBuffer}
-         */
-        function createArrayBuffer(str) {
-            var nBytes = str.length;
-            var ui8Data = new window.Uint8Array(nBytes);
-            for (var i = 0; i < nBytes; i++) {
-                ui8Data[i] = str.charCodeAt(i) & 0xff;
-            }
-            return ui8Data;
-        }
-
-        return FormSerializer;
-    }())
-}, window.treetop));
-
-
-/**
- * Register treetop delegation event handlers on the document.body
- */
-window.treetop.push(function ($) {
+}, (function ($) {
     "use strict";
 
+    /**
+     * This is the implementation of the 'treetop' attributes what can be used to overload
+     * html anchors and form elements. It works by registering event handlers on
+     * the body element.
+     *
+     * @type {Object} dictionary with 'mount' and 'unmount' function
+     *
+     */
     // handlers:
     function documentClick(_evt) {
         var evt = _evt || window.event;
@@ -781,16 +590,10 @@ window.treetop.push(function ($) {
         $.formSubmit(evt, elm);
     }
 
-    function onPopState(_evt) {
-        var evt = _evt || window.event;
-        $.browserPopState(evt);
-    }
-
     /**
      * treetop event delegation component definition
      */
     return {
-        tagName: "body",
         mount: function (el) {
             if (el.addEventListener) {
                 el.addEventListener("click", documentClick, false);
@@ -805,7 +608,6 @@ window.treetop.push(function ($) {
             } else {
                 throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
-            window.onpopstate = onPopState;
         },
         unmount: function (el) {
             if (el.removeEventListener) {
@@ -819,14 +621,11 @@ window.treetop.push(function ($) {
                 el.detachEvent("onkeydown", updateModifiers);
                 el.detachEvent("onkeyup", updateModifiers);
             }
-            if(window.onpopstate === onPopState) {
-                window.onpopstate = null;
-            }
         }
     };
 }({
     //
-    // Private
+    // Body Component internal state
     //
 
     // track modifier key state
@@ -882,16 +681,203 @@ window.treetop.push(function ($) {
         }
     },
 
+})),
+/**
+ * FormSerializer library is used to convert HTML Form data for use in XMLHTTPRequests
+ */
+(function () {
+    "use strict";
     /**
-     * document history pop state event handler
-     *
-     * @param {PopStateEvent} e
+     * techniques:
      */
-    browserPopState: function () {
-        "use strict";
-        // force browser to refresh the page when the back
-        // nav is triggered, seems to be the best thing to do
-        location.reload();
-    }
-}));
+    var URLEN_GET = 0;   // GET method
+    var URLEN_POST = 1;  // POST method, enctype is application/x-www-form-urlencoded (default)
+    var PLAIN_POST = 2;  // POST method, enctype is text/plain
+    var MULTI_POST = 3;  // POST method, enctype is multipart/form-data
 
+    /**
+     * @private
+     * @constructor
+     * @param {FormElement}   elm       The form to be serialized
+     * @param {Function}      callback  Called when the serialization is complete (may be sync or async)
+     */
+    function FormSerializer(elm, callback) {
+        if (!(this instanceof FormSerializer)) {
+            return new FormSerializer(elm, callback);
+        }
+
+        var nFile, sFieldType, oField, oSegmReq, oFile;
+        var bIsPost = elm.method.toLowerCase() === "post";
+        var fFilter = window.encodeURIComponent;
+
+        this.onRequestReady = callback;
+        this.receiver = elm.action;
+        this.status = 0;
+        this.segments = [];
+
+        if (bIsPost) {
+            this.contentType = elm.enctype ? elm.enctype : "application\/x-www-form-urlencoded";
+            switch (this.contentType) {
+            case "multipart\/form-data":
+                this.technique = MULTI_POST;
+
+                try {
+                    // ...to let FormData do all the work
+                    this.data = new window.FormData(elm);
+                    if (this.data) {
+                        this.processStatus();
+                        return;
+                    }
+                } catch (_) {
+                    "pass";
+                }
+
+                break;
+
+            case "text\/plain":
+                this.technique = PLAIN_POST;
+                fFilter = plainEscape;
+                break;
+
+            default:
+                this.technique = URLEN_POST;
+            }
+        } else {
+            this.technique = URLEN_GET;
+        }
+
+        for (var i = 0, len = elm.elements.length; i < len; i++) {
+            oField = elm.elements[i];
+            if (!oField.hasAttribute("name")) { continue; }
+            sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? oField.getAttribute("type").toUpperCase() : "TEXT";
+            if (sFieldType === "FILE" && oField.files.length > 0) {
+                if (this.technique === MULTI_POST) {
+                    if (!window.FileReader) {
+                        throw new Error("Operation not supported: cannot upload a document via AJAX if FileReader is not supported");
+                    }
+                    /* enctype is multipart/form-data */
+                    for (nFile = 0; nFile < oField.files.length; nFile++) {
+                        oFile = oField.files[nFile];
+                        oSegmReq = new window.FileReader();
+                        oSegmReq.onload = this.fileReadHandler(oField, oFile);
+                        oSegmReq.readAsBinaryString(oFile);
+                    }
+                } else {
+                    /* enctype is application/x-www-form-urlencoded or text/plain or method is GET: files will not be sent! */
+                    for (nFile = 0; nFile < oField.files.length; this.segments.push(fFilter(oField.name) + "=" + fFilter(oField.files[nFile++].name)));
+                }
+            } else if ((sFieldType !== "RADIO" && sFieldType !== "CHECKBOX") || oField.checked) {
+                /* field type is not FILE or is FILE but is empty */
+                this.segments.push(
+                    this.technique === MULTI_POST ? /* enctype is multipart/form-data */
+                        "Content-Disposition: form-data; name=\"" + oField.name + "\"\r\n\r\n" + oField.value + "\r\n"
+                    : /* enctype is application/x-www-form-urlencoded or text/plain or method is GET */
+                        fFilter(oField.name) + "=" + fFilter(oField.value)
+                );
+            }
+        }
+        this.processStatus();
+    }
+
+    /**
+     * Create FileReader onload handler
+     *
+     * @return {function}
+     */
+    FormSerializer.prototype.fileReadHandler = function (field, file) {
+        var self = this;
+        var index = self.segments.length;
+        self.segments.push(
+            "Content-Disposition: form-data; name=\"" + field.name + "\"; " +
+            "filename=\""+ file.name + "\"\r\n" +
+            "Content-Type: " + file.type + "\r\n\r\n");
+        self.status++;
+        return function (oFREvt) {
+            self.segments[index] += oFREvt.target.result + "\r\n";
+            self.status--;
+            self.processStatus();
+        };
+    };
+
+    /**
+     * Is called when a pass of serialization has completed.
+     *
+     * It will be called asynchronously if file reading is taking place.
+     */
+    FormSerializer.prototype.processStatus = function () {
+        if (this.status > 0) { return; }
+        /* the form is now totally serialized! prepare the data to be sent to the server... */
+        var sBoundary, method, url, hash, data, enctype;
+
+        switch (this.technique) {
+        case URLEN_GET:
+            method = "GET";
+            url = this.receiver.split("#");
+            hash = url.length > 1 ? "#" + url.splice(1).join("#") : "";  // preserve the hash
+            url = url[0].replace(/(?:\?.*)?$/, this.segments.length > 0 ? "?" + this.segments.join("&") : "") + hash;
+            data = null;
+            enctype = null;
+            break;
+
+        case URLEN_POST:
+        case PLAIN_POST:
+            method = "POST";
+            url = this.receiver;
+            enctype =  this.contentType;
+            data  = this.segments.join(this.technique === PLAIN_POST ? "\r\n" : "&");
+            break;
+
+        case MULTI_POST:
+            method = "POST";
+            url = this.receiver;
+            if (this.data) {
+                // use native FormData multipart data
+                data = this.data;
+                enctype = null;
+            } else {
+                // construct serialized multipart data manually
+                sBoundary = "---------------------------" + Date.now().toString(16);
+                enctype = "multipart\/form-data; boundary=" + sBoundary;
+                data = "--" + sBoundary + "\r\n" + this.segments.join("--" + sBoundary + "\r\n") + "--" + sBoundary + "--\r\n";
+                if (window.Uint8Array) {
+                    data = createArrayBuffer(data);
+                }
+            }
+            break;
+        }
+
+        this.onRequestReady({
+            method: method,
+            action: url,
+            data: data,
+            enctype: enctype
+        });
+    };
+
+    /**
+     * Used to escape strings for encoding text/plain
+     *
+     * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
+     *
+     * @param  {stirng} sText
+     * @return {string}
+     */
+    function plainEscape(sText) {
+        return sText.replace(/[\s\=\\]/g, "\\$&");
+    }
+
+    /**
+     * @param  {string} str
+     * @return {ArrayBuffer}
+     */
+    function createArrayBuffer(str) {
+        var nBytes = str.length;
+        var ui8Data = new window.Uint8Array(nBytes);
+        for (var i = 0; i < nBytes; i++) {
+            ui8Data[i] = str.charCodeAt(i) & 0xff;
+        }
+        return ui8Data;
+    }
+
+    return FormSerializer;
+}())));
