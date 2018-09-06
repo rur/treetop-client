@@ -42,7 +42,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         initCalled = true;
         var config = _config instanceof Object ? _config : {};
-        var treetopAttr;
+        var treetopAttr = true;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
