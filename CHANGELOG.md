@@ -1,5 +1,12 @@
 
 
+
+## [0.5.3] - 2018-06-09
+### Changed
+
+- Fixed bug where Treetop element attribute is not enabled by default as intended
+
+
 ## [0.4.1] - 2018-25-07
 ### Changed
 
