@@ -61,10 +61,12 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
         if (treetopAttr) {
             // apply default components
-            $.mountTags["body"] = BodyComponent.mount;
-            // NOTE: realistically, body will never be 'unmounted', this
-            // should not be necessary.
-            $.unmountTags["body"] = BodyComponent.unmount;
+            // body mount will listen for anchors clicks and form submit
+            // default behavior will be hijacked if the treetop attribute is present
+            $.mountTags["body"] = BodyComponent.bodyMount;
+            // Elements with treetop-link="/some/path" attribute will have a listener attached
+            // which will trigger `treetop.request("GET", "/some/path")` following each "click" event
+            $.mountTags["treetop-link"] = BodyComponent.linkMount;
         }
 
         // TODO: Check for document ready state before mounting,
@@ -590,7 +592,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     // handlers:
     function documentClick(_evt) {
         var evt = _evt || window.event;
-        var elm = _evt.target || _evt.srcElement;
+        var elm = evt.target || evt.srcElement;
         while (elm.tagName.toUpperCase() !== "A") {
             if (elm.parentElement) {
                 elm = elm.parentElement;
@@ -610,15 +612,24 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     function onSubmit(_evt) {
         var evt = _evt || window.event;
-        var elm = _evt.target || _evt.srcElement;
+        var elm = evt.target || evt.srcElement;
         $.formSubmit(evt, elm);
+    }
+
+    function linkClick(_evt) {
+        var evt = _evt || window.event;
+        var elm = evt.target || evt.srcElement;
+        if (elm.hasAttribute("treetop-link")) {
+            var href = elm.getAttribute("treetop-link");
+            window.treetop.request("GET", href)
+        }
     }
 
     /**
      * treetop event delegation component definition
      */
     return {
-        mount: function (el) {
+        bodyMount: function (el) {
             if (el.addEventListener) {
                 el.addEventListener("click", documentClick, false);
                 el.addEventListener("submit", onSubmit, false);
@@ -633,17 +644,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
         },
-        unmount: function (el) {
-            if (el.removeEventListener) {
-                el.removeEventListener("click", documentClick);
-                el.removeEventListener("submit", onSubmit);
-                el.removeEventListener("keydown", updateModifiers);
-                el.removeEventListener("keyup", updateModifiers);
-            } else if (el.detachEvent) {
-                el.detachEvent("onclick", documentClick);
-                el.detachEvent("onsubmit", onSubmit);
-                el.detachEvent("onkeydown", updateModifiers);
-                el.detachEvent("onkeyup", updateModifiers);
+        linkMount: function (el) {
+            if (el.addEventListener) {
+                el.addEventListener("click", linkClick, false);
+            } else if (el.attachEvent) {
+                el.attachEvent("onclick", linkClick);
+            } else {
+                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
         }
     };
@@ -667,17 +674,11 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         if (this.shiftKey || this.ctrlKey || this.metaKey ||
             (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
         ) {
-            // Use default browser behaviour when a modifier key is pressed
+            // Use default browser behavior when a modifier key is pressed
             // or treetop has been explicity disabled
             return
         }
-        if (elm.hasAttribute("treetop-link")) {
-            // 'treetop-link' attribute can be used as an alternative to 'href' attribute.
-            // This is useful when default 'href' behavior is undesirable.
-            evt.preventDefault();
-            window.treetop.request("GET", elm.getAttribute("treetop-link"));
-            return false;
-        } else if (elm.href && elm.hasAttribute("treetop")) {
+        if (elm.href && elm.hasAttribute("treetop")) {
             // hijack standard link click, extract href of link and
             // trigger a Treetop XHR request instead
             evt.preventDefault();
