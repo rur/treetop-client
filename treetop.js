@@ -66,7 +66,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.mountTags["body"] = BodyComponent.bodyMount;
             // Elements with treetop-link="/some/path" attribute will have a listener attached
             // which will trigger `treetop.request("GET", "/some/path")` following each "click" event
-            $.mountTags["treetop-link"] = BodyComponent.linkMount;
+            $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
         }
 
         // TODO: Check for document ready state before mounting,
