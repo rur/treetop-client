@@ -1,0 +1,7 @@
+{
+    "rules": {
+        "indent": [ "error", 4 ],
+        "linebreak-style": [ 2, "unix" ]
+    },
+    "extends": "eslint:recommended"
+}

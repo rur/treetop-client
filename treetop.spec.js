@@ -3,31 +3,8 @@
 const sinon = require('sinon');
 const chai = require('chai');
 const expect = chai.expect;
-
-window.treetop.init({
-  treetopAttr: false,
-  mountTags: {
-    "test-node": sinon.spy()
-  },
-  mountAttrs: {
-    "test": sinon.spy(),
-    "test2": sinon.spy(),
-  },
-  unmountTags: {
-    "test-node": sinon.spy()
-  },
-  unmountAttrs: {
-    "test": sinon.spy(),
-    "test2": sinon.spy()
-  },
-  compose: {
-    "test": (next, prev) => {
-      Array.from(next.children).forEach(child => {
-        prev.appendChild(child);
-      });
-    }
-  }
-});
+const window = global.window;
+const document = global.window.document;
 
 describe('Treetop', () => {
   'strict mode';
@@ -43,10 +20,10 @@ describe('Treetop', () => {
     };
     var config = treetop.config();
     // reset all mount spys
-    Object.values(config.mountTags).map(s => { try { s.resetHistory() } catch (e) {}})
-    Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
-    Object.values(config.unmountTags).map(s => { try { s.resetHistory() } catch (e) {}})
-    Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {}})
+    Object.values(config.mountTags).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
+    Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
+    Object.values(config.unmountTags).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
+    Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
   });
 
   afterEach(() => {

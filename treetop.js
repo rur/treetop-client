@@ -1,4 +1,4 @@
-/* global window, document, history, HTMLTemplateElement, XMLHttpRequest, ActiveXObject */
+/* global window, document, XMLHttpRequest, ActiveXObject */
 
 window.treetop = (function ($, BodyComponent, FormSerializer) {
     "use strict";
@@ -14,33 +14,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     if (!(window.history && typeof window.history.pushState === 'function')) {
         throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
-    var initCalled = false;
 
-    /**
-     * Treetop API Constructor
-     *
-     * @constructor
-     */
-    function Treetop() {}
-
-    /**
-     * Configure treetop and mount document.body
-     *
-     * @param  {Object} def Dict containing complete page configuration.
-     * @throws  {Error} If a config key isn't recognized or `init` was
-     *                  called previously
-     */
-    Treetop.prototype.init = function (_config) {
-        // Since the DOM is stateful, mounting is not a
-        // reversible operation. It is crucial therefore that
-        // the initial setup process only ever happens once during
-        // the lifetime of a page. After that elements will only
-        // be mounted and unmounted when being attached or detached
-        // from the DOM.
-        if (initCalled) {
-            throw Error("Treetop: init has already been called");
-        }
-        initCalled = true;
+    function init(_config) {
         var config = _config instanceof Object ? _config : {};
         var treetopAttr = true;
 
@@ -100,6 +75,50 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             var evt = _evt || window.event;
             $.browserPopState(evt);
         };
+    }
+
+    /**
+     * Treetop API Constructor
+     *
+     * @constructor
+     */
+    function Treetop() {}
+
+    var initCalled = false;
+    /**
+     * Configure treetop and mount document.body.
+     *
+     * @param  {Object} config Dict containing complete page configuration.
+     * @throws  {Error} If a config property isn't recognized or `init` was
+     *                  triggered previously
+     */
+    Treetop.prototype.init = function(config) {
+        // Since the DOM is stateful, mounting is not a
+        // reversible operation. It is crucial therefore that
+        // the initial setup process only ever happens once during
+        // the lifetime of a page. After that elements will only
+        // be mounted and unmounted when being attached or detached
+        // from the DOM.
+        if (initCalled) {
+            throw Error("Treetop: init has already been called");
+        }
+        initCalled = true;
+        // see https://plainjs.com/javascript/events/running-code-when-the-document-is-ready-15/
+        if (document.readyState!='loading') {
+            window.setTimeout(function () {
+                init(config);
+            });
+        } else if (document.addEventListener) {
+            // modern browsers
+            document.addEventListener('DOMContentLoaded', function(){
+                init(config);
+            });
+        } else {
+            // IE <= 8
+            document.attachEvent('onreadystatechange', function(){
+                if (document.readyState=='complete') init(config);
+            });
+        }
     };
 
     /**
@@ -216,7 +235,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * treetop.submit will trigger an XHR request derived from the state
      * of a supplied HTML Form element.
      */
-    Treetop.prototype.submit = function (formElement, submitInputElement) {
+    Treetop.prototype.submit = function (formElement) {
         function dataHandler(fdata) {
             window.setTimeout(function () {
                 window.treetop.request(
@@ -233,8 +252,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
     Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
 
+    var api = new Treetop();
+    if (window.hasOwnProperty("TREETOP_CONFIG")) {
+        // support passive initialization
+        api.init(window.TREETOP_CONFIG);
+    }
     // api
-    return new Treetop();
+    return api;
 }({
     //
     // Treetop Internal
@@ -344,7 +368,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         "use strict";
         // force browser to refresh the page when the back
         // nav is triggered, seems to be the best thing to do
-        location.reload();
+        window.location.reload();
     },
 
     /**
@@ -440,7 +464,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     mount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comp, name;
+        var i, j, comp, name;
         if (el.nodeType !== 1) {
             // this is not an ELEMENT_NODE
             return;
@@ -478,7 +502,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     unmount: function (el) {
         "use strict";
         var $ = this;
-        var i, len, j, comp, name;
+        var i, j, comp, name;
         if (el.nodeType !== 1) {
             // this is not an ELEMENT_NODE
             return;
@@ -546,7 +570,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
             // Avoid bugs when hasOwnProperty is shadowed
             if (Object.prototype.hasOwnProperty.call(source, key)) {
-               target[key.toLowerCase()] = source[key];
+                target[key.toLowerCase()] = source[key];
             }
         }
         return target;
