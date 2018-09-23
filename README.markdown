@@ -31,13 +31,19 @@ treetop.request( [method], [url], [body], [contentType])
 | URL               | string  | The URL path                                     |
 | body              | (optional) string | the encoded request body                   |
 | contentType       | (optional) string | body encoding type        |
-  
 
-### Configuration
-The `treetop.init(..)` method is used to configure and initialize the client library when a new page is loaded. The init function __can only be called once__, between full-page loads. Hence, the full configuration must be supplied in one go.
-##### For example,
+
+## Configuration
+
+The client library must be initialized for all JS component to be bound.
+Initialization can be triggered directly using `treetop.init({...})` or passively by
+declaring a global variable `window.TREETOP_CONFIG` before the client script loads.
+
+The init process __can only be triggered once__ during full-page loads. Hence, the full configuration must be supplied in one go.
+
+#### Config Example
 ```
-treetop.init({
+window.TREETOP_CONFIG = {
   treetopAttr: true,
   mountTags: {
     "my-tag": (el) => { /*...*/ }
@@ -56,7 +62,7 @@ treetop.init({
   },
   onNetworkError: (xhr) => { /*...*/ },
   onUnsupported: (xhr) => { /*...*/ }
-});
+};
 ```
 #### Element Mount Hooks
 When an element has been added or removed from the DOM by the Treetop library, the fragment is scanned for elements matching the configured mount/unmount functions.
@@ -65,7 +71,7 @@ When an element has been added or removed from the DOM by the Treetop library, t
 * `unmountTags`: match element tag name after removal
 * `mountAttrs`: match attribute name after being attached
 * `unmountAttrs`: match attribute name after removal
- 
+
  _NB. Names are case insensitive_
 
 ##### Initial Mount
