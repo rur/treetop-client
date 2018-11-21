@@ -147,6 +147,96 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
 
     /**
+     * Appends a node to a parent and mounts treetop components.
+     *
+     * @param {HTMLElement} child: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedParent: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountChildElement = function(child, mountedParent) {
+        if (!next || !mountedParent) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (child.parentNode) {
+            throw new Error(
+                "Treetop: Cannot mount a child element that "+
+                "is already attached to a parent node"
+            );
+        }
+        mountedParent.appendChild(child);
+        $.mount(child);
+    };
+
+    /**
+     * Inserts new node as a sibling after an element aready attache to a parent node.
+     * The new node will be mounted.
+     *
+     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSubling: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountAfterElement = function(next, mountedSibling) {
+        if (!next || !mountedSibling) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (next.parentNode) {
+            throw new Error(
+                "Treetop: Cannot mount a child element that "+
+                "is already attached to a parent node"
+            );
+        } else if (!mountedSibling.parentNode) {
+            throw new Error(
+                "Treetop: Cannot after a silbing node that is not attached to a parent."
+            );
+        }
+        mountedSibling.parentNode.insertAfter(next, mountedSibling);
+        $.mount(next);
+    };
+
+    /**
+     * Inserts new node as a sibling before an element aready attached to a parent node.
+     * The new node will be mounted.
+     *
+     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSubling: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountBeforeElement = function(prev, mountedSibling) {
+        if (!next || !mountedSibling) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (next.parentNode) {
+            throw new Error(
+                "Treetop: Cannot mount a child element that "+
+                "is already attached to a parent node"
+            );
+        } else if (!mountedSibling.parentNode) {
+            throw new Error(
+                "Treetop: Cannot before a silbing node that is not attached to a parent."
+            );
+        }
+        mountedSibling.parentNode.insertBefore(prev, mountedSibling);
+        $.mount(prev);
+    };
+
+    /**
+     * Removes and unmounts an element from the DOM
+     *
+     * @param {HTMLElement} mountedElement: HTMLElement, not attached and mounted to the DOM
+     *
+     * @throws Error if the elements provided is not attached to a parent node
+     */
+    Treetop.prototype.unmountElement = function(mountedElement) {
+        if (!mountedElement.parentNode) {
+            throw new Error(
+                "Treetop: Cannot unmount a node that is not attached to a parent."
+            );
+        }
+        mountedElement.parentNode.removeChild(mountedElement);
+        $.unmount(mountedElement);
+    };
+
+    /**
      * Get a copy of the treetop configuration,
      * useful for debugging.
      *
@@ -408,6 +498,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     defaultComposition: function(next, prev) {
         prev.parentNode.replaceChild(next, prev);
+        this.mount(next)
+        this.unmount(prev)
     },
 
     /**
@@ -420,7 +512,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         var $ = this;
         var nextCompose = next.getAttribute("treetop-compose");
         var prevCompose = prev.getAttribute("treetop-compose");
-        var compose = $.defaultComposition;
         if (typeof nextCompose === "string" &&
             typeof prevCompose === "string"
         ) {
@@ -432,26 +523,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
               $.compose.hasOwnProperty(nextCompose) &&
               typeof $.compose[nextCompose] === "function"
             ) {
+                // all criteria have been met, retrieve custom compose function and delegate
                 compose = $.compose[nextCompose];
+                compose(next, prev);
+                return
             }
         }
-
-        var asyncMount = compose(next, prev);
-        if (typeof asyncMount === "function") {
-            asyncMount($.asyncMountFn(next, prev));
-        } else {
-            $.mount(next);
-            $.unmount(prev);
-        }
-    },
-
-
-    asyncMountFn: function (next, prev) {
-        var $ = this;
-        return function () {
-            $.mount(next);
-            $.unmount(prev);
-        };
+        $.defaultComposition(next, prev);
     },
 
     /**
