@@ -69,9 +69,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
         }
 
-        // TODO: Check for document ready state before mounting,
-        //       here we assume the developer has done so.
-        // point of no return
         $.mount(document.body);
         window.onpopstate = function (_evt) {
             var evt = _evt || window.event;
