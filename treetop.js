@@ -149,6 +149,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     /**
      * Appends a node to a parent and mounts treetop components.
      *
+     * TODO: Needs a test case
+     *
      * @param {HTMLElement} child: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} mountedParent: node currently attached to the DOM
      *
@@ -170,6 +172,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     /**
      * Inserts new node as a sibling after an element aready attache to a parent node.
      * The new node will be mounted.
+     *
+     * TODO: Needs a test case
      *
      * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} mountedSubling: node currently attached to the DOM
@@ -197,6 +201,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * Inserts new node as a sibling before an element aready attached to a parent node.
      * The new node will be mounted.
      *
+     * TODO: Needs a test case
+     *
      * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} mountedSubling: node currently attached to the DOM
      *
@@ -221,6 +227,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     /**
      * Removes and unmounts an element from the DOM
+     *
+     * TODO: Needs a test case
      *
      * @param {HTMLElement} mountedElement: HTMLElement, not attached and mounted to the DOM
      *
