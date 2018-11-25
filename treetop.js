@@ -17,7 +17,10 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     function init(_config) {
         var config = _config instanceof Object ? _config : {};
+
+        // Feature flags for built-in component. Note default values.
         var treetopAttr = true;
+        var treetopLinkAttr = true;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -52,6 +55,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             case "treetopattr":
                 treetopAttr = !(config[key] === false);
                 continue;
+            case "treetoplinkattr":
+                treetopLinkAttr = !(config[key] === false);
+                continue;
             default:
                 throw new Error(
                     "Treetop: unknown configuration property '" + key + "'"
@@ -59,13 +65,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
         }
 
+        // Add built-in component to configuration.
+        // Notice that custom components that conflict will be clobbered.
         if (treetopAttr) {
-            // apply default components
-            // body mount will listen for anchors clicks and form submit
-            // default behavior will be hijacked if the treetop attribute is present
+            delete $.mountTags["treetop"];
             $.mountTags["body"] = BodyComponent.bodyMount;
-            // Elements with treetop-link="/some/path" attribute will have a listener attached
-            // which will trigger `treetop.request("GET", "/some/path")` following each "click" event
+        }
+        if (treetopLinkAttr) {
             $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
         }
 
@@ -83,7 +89,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     function Treetop() {}
 
-    var initCalled = false;
+    var initialized = false;
     /**
      * Configure treetop and mount document.body.
      *
@@ -92,16 +98,16 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *                  triggered previously
      */
     Treetop.prototype.init = function(config) {
-        // Since the DOM is stateful, mounting is not a
+        // Since the DOM is 'stateful', mounting is not a
         // reversible operation. It is crucial therefore that
         // the initial setup process only ever happens once during
         // the lifetime of a page. After that elements will only
         // be mounted and unmounted when being attached or detached
         // from the DOM.
-        if (initCalled) {
-            throw Error("Treetop: init has already been called");
+        if (initialized) {
+            throw Error("Treetop: Failed attempt to re-initialize. Treetop client is already in use.");
         }
-        initCalled = true;
+        initialized = true;
         // see https://plainjs.com/javascript/events/running-code-when-the-document-is-ready-15/
         if (document.readyState!='loading') {
             window.setTimeout(function () {
@@ -130,6 +136,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.updateElement = function (next, prev) {
+        // make sure an error is raise if initialization happens after the API is used
+        initialized = true;
         if (!next || !prev) {
             throw new Error("Treetop: Expecting two HTMLElements");
         } else if (next.parentNode) {
@@ -178,6 +186,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @param  {string} contentType    Encoding of the request body
      */
     Treetop.prototype.request = function (method, url, body, contentType) {
+        // make sure an error is raise if initialization happens after the API is used
+        initialized = true;
         if (!$.METHODS[method.toUpperCase()]) {
             throw new Error("Treetop: Unknown request method '" + method + "'");
         }
@@ -235,6 +245,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * of a supplied HTML Form element.
      */
     Treetop.prototype.submit = function (formElement) {
+        // make sure an error is raise if initialization happens after the API is used
+        initialized = true;
         function dataHandler(fdata) {
             window.setTimeout(function () {
                 window.treetop.request(
