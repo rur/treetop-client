@@ -39,8 +39,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             case "unmountattrs":
                 $.unmountAttrs = $.copyConfig(config[key])
                 break;
-            case "compose":
-                $.compose = $.copyConfig(config[key])
+            case "merge":
+                $.merge = $.copyConfig(config[key])
                 break;
             case "onnetworkerror":
                 if (typeof config[key] === "function") {
@@ -127,7 +127,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     };
 
     /**
-     * Update a existing DOM node with a new element. The elements will be composed
+     * Update a existing DOM node with a new element. The elements will be merged
      * and (un)mounted in the normal Treetop way.
      *
      * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
@@ -165,7 +165,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountChildElement = function(child, mountedParent) {
-        if (!next || !mountedParent) {
+        if (!child || !mountedParent) {
             throw new Error("Treetop: Expecting two HTMLElements");
         } else if (child.parentNode) {
             throw new Error(
@@ -217,9 +217,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountBeforeElement = function(prev, mountedSibling) {
-        if (!next || !mountedSibling) {
+        if (!prev || !mountedSibling) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (next.parentNode) {
+        } else if (prev.parentNode) {
             throw new Error(
                 "Treetop: Cannot mount a child element that "+
                 "is already attached to a parent node"
@@ -266,7 +266,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             mountAttrs: $.copyConfig($.mountAttrs),
             unmountTags: $.copyConfig($.unmountTags),
             unmountAttrs: $.copyConfig($.unmountAttrs),
-            compose: $.copyConfig($.compose),
+            merge: $.copyConfig($.merge),
             onNetworkError: $.onNetworkError,
             onUnsupported: $.onUnsupported,
         };
@@ -383,10 +383,10 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     onNetworkError: null,
 
     /**
-     * Store the treetop composition definitions
+     * Store the treetop custom merge functions
      * @type {Object} object reference
      */
-    compose: {},
+    merge: {},
 
     /**
      * Track order of requests as well as the elements that were updated.
@@ -511,7 +511,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     },
 
     /**
-     * Default treetop composition method
+     * Default treetop merge method. Replace element followed by sync
+     * mount of next and unmount of previous elements.
      *
      * @param  {HTMLElement} next The element recently loaded from the API
      * @param  {HTMLElement} prev The element currently within the DOM
@@ -530,22 +531,22 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     */
     updateElement: function(next, prev) {
         var $ = this;
-        var nextCompose = next.getAttribute("treetop-compose");
-        var prevCompose = prev.getAttribute("treetop-compose");
-        if (typeof nextCompose === "string" &&
-            typeof prevCompose === "string"
+        var nextValue = next.getAttribute("treetop-merge");
+        var prevValue = prev.getAttribute("treetop-merge");
+        if (typeof nextValue === "string" &&
+            typeof prevValue === "string" &&
+            nextValue !== ""
         ) {
-            nextCompose = nextCompose.toLowerCase();
-            prevCompose = prevCompose.toLowerCase();
+            nextValue = nextValue.toLowerCase();
+            prevValue = prevValue.toLowerCase();
             if (
-              nextCompose.length &&
-              nextCompose === prevCompose &&
-              $.compose.hasOwnProperty(nextCompose) &&
-              typeof $.compose[nextCompose] === "function"
+              nextValue === prevValue &&
+              $.merge.hasOwnProperty(nextValue) &&
+              typeof $.merge[nextValue] === "function"
             ) {
-                // all criteria have been met, retrieve custom compose function and delegate
-                compose = $.compose[nextCompose];
-                compose(next, prev);
+                // all criteria have been met, delegate update to custom merge function.
+                var mergeFn = $.merge[nextValue];
+                mergeFn(next, prev);
                 return
             }
         }

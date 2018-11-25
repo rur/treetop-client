@@ -61,8 +61,8 @@ window.init({
   unmountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
-  compose: {
-    "my-composition": (next, prev) => { /*...*/ }
+  merge: {
+    "my-custom-merge": (next, prev) => { /*...*/ }
   },
   onNetworkError: (xhr) => { /*...*/ },
   onUnsupported: (xhr) => { /*...*/ }
@@ -130,13 +130,13 @@ This is similar to the following,
 
     <ANY onclick="treetop.request('GET', '/some/path/')">...</ANY>
 
-## Custom Compose
+## Custom Merge
 
-When a new fragment is matched to an existing DOM node the default behavior is to replace one with the other, then mount and unmount synchronously. It is possible however, to define a custom 'compose' function which merges the two elements in some way, for example...
+When a new fragment is matched to an existing DOM node the default behavior is to replace one with the other, then mount and unmount synchronously. It is possible however, to define a custom 'merge' function which merges the two elements in some way, for example...
 ```
 treetop.init({
 	...
-	"compose": {
+	"merge": {
 		"append-children": (next, prev) => {
 		    Array.from(next.children).forEach((child) => {
 		        prev.appendChild(child)
@@ -145,9 +145,9 @@ treetop.init({
 	}
 })
 ```
-This custom compose implementation will be triggered if both new and old elements have matching _treetop-compose_ attributes. Like so,
+This custom merge implementation will be triggered if both new and old elements have matching _treetop-merge_ attributes. Like so,
 ```
-<ul treetop-compose="append-children"><li...
+<ul treetop-merge="append-children"><li...
 ```
 
 ## Browser Support & Ployfills
