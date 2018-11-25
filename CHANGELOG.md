@@ -1,4 +1,9 @@
+## [0.5.5] - 2018-11-25
+### Changed
 
+- Treetop initialization will now fail if any API method is called beforehand.
+- New "treetopLinkAttr" config feature flag.
+- README docs improved
 
 
 ## [0.5.3] - 2018-06-09

@@ -34,7 +34,7 @@ describe('Treetop', () => {
     try {
       window.treetop.init();
     } catch (err) {
-      expect(err.toString()).to.contain("Treetop: init has already been called")
+      expect(err.toString()).to.contain("Treetop: Failed attempt to re-initialize")
       return
     }
     throw Error("An error was not thrown");

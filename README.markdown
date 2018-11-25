@@ -35,15 +35,19 @@ treetop.request( [method], [url], [body], [contentType])
 
 ## Configuration
 
-The client library must be initialized for JS component to be bound.
-Initialization can be triggered directly using `treetop.init({...})` or passively by
-declaring a global variable `window.TREETOP_CONFIG` before the client script loads.
+### Initialization
 
-Initialization only happens once and the full configuration is supplied in one object.
+To make use of custom integration hooks and the built-in components, the client library must be initialized before any partial requests are made. Late arriving configuration will be rejected.
+
+<!-- TODO: add troubleshooting docs -->
+
+Initialization can be triggered actively using `treetop.init({...})` or passively by
+declaring a global variable `window.TREETOP_CONFIG` __before__ the client script loads.
+The config object is the same in both cases.
 
 #### Config Example
 ```
-window.TREETOP_CONFIG = {
+window.init({
   treetopAttr: true,
   mountTags: {
     "my-tag": (el) => { /*...*/ }
@@ -62,9 +66,10 @@ window.TREETOP_CONFIG = {
   },
   onNetworkError: (xhr) => { /*...*/ },
   onUnsupported: (xhr) => { /*...*/ }
-};
+});
 ```
-#### Element Mount Hooks
+## Custom Component
+
 When an element has been added or removed from the DOM by the Treetop library, the node hierarchy is scanned for elements matching the configured mount/unmount functions.
 
 * `mountTags`: match element tag name after being added
@@ -72,46 +77,25 @@ When an element has been added or removed from the DOM by the Treetop library, t
 * `mountAttrs`: match attribute name after being attached
 * `unmountAttrs`: match attribute name after removal
 
-##### Initial Mount
-When treetop is initialized a one-time _mount_ is triggered from the document body.
+Custom JS components can make use of this for integration hooks.
 
-### Composing Element
-When a new fragment is matched to an existing DOM node the default behavior is to replace one with the other and mount/unmount  synchronously. It is possible however, to define a custom 'compose' function which merges the two elements in some way, for example...
-```
-treetop.init({
-	...
-	"compose": {
-		"append-children": (next, prev) => {
-		    Array.from(next.children).forEach((child) => {
-		        prev.appendChild(child)
-		    })
-		}
-	}
-})
-```
-This custom compose implementation will be triggered if both new and old elements have matching _treetop-compose_ attributes. Like so,
-```
-<ul treetop-compose="append-children"><li...
-```
+## Built-in components
 
-### Config Getter
-To obtain the active configuration for debug purposes, a copy can be read out like so.
-```
-var cfg = treetop.config()
-```
+Some build-in components are available when treetop is initialized.
+Built-in components can be enabled or disabled in the config.
 
-### Request Errors
-In situations where the Treetop client is not capable of handling the result of a request, handling can be delegated to a user defined function. The relevant XMLHttpRequest instance will be passed to as a parameter.
+### Feature Flags
+Properties supported by Treetop config allow control of build-in components.
 
-##### Config Properties:
-* `onUnsupported`, when a server responds to a Treetop request with an unsupported content type.
-* `onNetworkError`, failed to establish a connection with the server for some reason.
+| Config Flag       | type    | Default | Component                               |
+|-------------------|---------|---------|-----------------------------------------|
+| treetopAttr       |`boolean`| `true`  | The "treetop" attribute component       |
+| treetopLinkAttr   |`boolean`| `true`  | The "treetop-link" attribute component  |
 
-## The "treetop" Element Attribute
+### The "treetop" Element Attribute
 
-The `treetop` attribute is a component enabled by default which overrides the default behavior of any anchor or form element it is attached to. Activating the action on those elements will trigger a Treetop XHR request instead of a conventional browser navigation event.
+The `treetop` attribute component overrides the default behavior of any HTMLAnchorElement or HTMLFormElement it is attached to. Activating "href" or "action" behavior on those elements will trigger a Treetop XHR request instead of browser navigation.
 
-The component can be disabled in the config using the `treetopAttr` flag, the API client will work fine without it.
 
 #### Example
 ```
@@ -134,6 +118,37 @@ Submit event here will result in the following library call,
 treetop.request("POST", "/some/path", "foo=bar", "application/x-www-form-urlencoded")
 ```
 
+### The "treetop-link" Attribute
+
+The `treetop-link` attribute component that will trigger a treetop GET request when an element is clicked. This is a useful alternative to the `treetop` attribute when you wish to avoid the semantics of the `href` anchor tag.
+
+For example,
+
+    <ANY treetop-link="/some/path/">...</ANY>
+
+This is similar to the following,
+
+    <ANY onclick="treetop.request('GET', '/some/path/')">...</ANY>
+
+## Custom Compose
+
+When a new fragment is matched to an existing DOM node the default behavior is to replace one with the other, then mount and unmount synchronously. It is possible however, to define a custom 'compose' function which merges the two elements in some way, for example...
+```
+treetop.init({
+	...
+	"compose": {
+		"append-children": (next, prev) => {
+		    Array.from(next.children).forEach((child) => {
+		        prev.appendChild(child)
+		    })
+		}
+	}
+})
+```
+This custom compose implementation will be triggered if both new and old elements have matching _treetop-compose_ attributes. Like so,
+```
+<ul treetop-compose="append-children"><li...
+```
 
 ## Browser Support & Ployfills
 
