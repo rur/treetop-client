@@ -131,7 +131,7 @@ describe('Treetop', () => {
     });
   });
 
-  describe('parse maformed responses', () => {
+  describe('parse malformed responses', () => {
     beforeEach(() => {
       var el = document.createElement("p");
       el.setAttribute("id", "test");
