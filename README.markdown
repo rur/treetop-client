@@ -5,9 +5,12 @@
 This is the browser client library for Treetop enabled web servers. See [Treetop Library](https://github.com/rur/treetop) for more details. The _treetop.js_ script must be sourced by the web browser to enable in-page navigation.
 
 ## Client API
-This library defines a `window.treetop` API instance.
-### Request
+This library defines a `window.treetop` API instance. See [API Docs](https://github.com/rur/treetop-client/blob/master/API.markdown) for more details
+
+### Example request using API
+
 A Treetop request can be triggered from a script like so,
+
 ```
 treetop.request(
 	"POST",
@@ -16,22 +19,6 @@ treetop.request(
 	"application/x-www-form-urlencoded"
 )
 ```
-Notice that no callback mechanism is supported. Response handing is mandated by the protocol, see [Treetop Library](https://github.com/rur/treetop).
-
-##### Usage
-```
-treetop.request( [method], [url], [body], [contentType])
-```
-
-##### Arguments:
-
-| Param             | Type    | Details                                          |
-|-------------------|---------|--------------------------------------------------|
-| method            | string  | The HTTP request method to use                   |
-| URL               | string  | The URL path                                     |
-| body              | (optional) string | the encoded request body                   |
-| contentType       | (optional) string | body encoding type        |
-
 
 ## Configuration
 
@@ -87,15 +74,14 @@ Built-in components can be enabled or disabled in the config.
 ### Feature Flags
 Properties supported by Treetop config allow control of build-in components.
 
-| Config Flag       | type    | Default | Component                               |
-|-------------------|---------|---------|-----------------------------------------|
-| treetopAttr       |`boolean`| `true`  | The "treetop" attribute component       |
-| treetopLinkAttr   |`boolean`| `true`  | The "treetop-link" attribute component  |
+| Config Flag       | Type    | Default | Component                                      |
+|-------------------|---------|---------|------------------------------------------------|
+| treetopAttr       |`boolean`| `true`  | Enable the "treetop" attribute component       |
+| treetopLinkAttr   |`boolean`| `true`  | Enable the "treetop-link" attribute component  |
 
-### The "treetop" Element Attribute
+### The "treetop" Attribute
 
-The `treetop` attribute component overrides the default behavior of any HTMLAnchorElement or HTMLFormElement it is attached to. Activating "href" or "action" behavior on those elements will trigger a Treetop XHR request instead of browser navigation.
-
+The `treetop` attribute component overrides any `HTMLAnchorElement` or `HTMLFormElement` node it is attached to. Activating "href" or "action" behavior on those elements will trigger a Treetop XHR request instead of browser navigation.
 
 #### Example
 ```
@@ -120,7 +106,8 @@ treetop.request("POST", "/some/path", "foo=bar", "application/x-www-form-urlenco
 
 ### The "treetop-link" Attribute
 
-The `treetop-link` attribute component that will trigger a treetop GET request when an element is clicked. This is a useful alternative to the `treetop` attribute when you wish to avoid the semantics of the `href` anchor tag.
+The `treetop-link` attribute component will trigger a treetop GET request when an element is clicked.
+This is a useful alternative to the `treetop` attribute when you wish to avoid the semantics of the `href` anchor tag.
 
 For example,
 
@@ -138,16 +125,20 @@ treetop.init({
 	...
 	"merge": {
 		"append-children": (next, prev) => {
-		    Array.from(next.children).forEach((child) => {
-		        prev.appendChild(child)
-		    })
+			Array.from(next.children).forEach((child) => {
+				treetop.mountChild(child, prev);
+			})
 		}
 	}
 })
 ```
 This custom merge implementation will be triggered if both new and old elements have matching _treetop-merge_ attributes. Like so,
 ```
-<ul treetop-merge="append-children"><li...
+<!-- old -->
+<ul id="list" treetop-compose="append-children"><li...
+
+<!-- new -->
+<ul id="list" treetop-compose="append-children"><li...
 ```
 
 ## Browser Support & Ployfills

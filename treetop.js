@@ -164,7 +164,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mountChildElement = function(child, mountedParent) {
+    Treetop.prototype.mountChild = function(child, mountedParent) {
         if (!child || !mountedParent) {
             throw new Error("Treetop: Expecting two HTMLElements");
         } else if (child.parentNode) {
@@ -183,15 +183,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * TODO: Needs a test case
      *
-     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
-     * @param {HTMLElement} mountedSubling: node currently attached to the DOM
+     * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSibling: node currently attached to the DOM
      *
      * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mountAfterElement = function(next, mountedSibling) {
-        if (!next || !mountedSibling) {
+    Treetop.prototype.mountAfter = function(newSibling, mountedSibling) {
+        if (!newSibling || !mountedSibling) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (next.parentNode) {
+        } else if (newSibling.parentNode) {
             throw new Error(
                 "Treetop: Cannot mount a child element that "+
                 "is already attached to a parent node"
@@ -201,8 +201,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 "Treetop: Cannot after a silbing node that is not attached to a parent."
             );
         }
-        mountedSibling.parentNode.insertAfter(next, mountedSibling);
-        $.mount(next);
+        mountedSibling.parentNode.insertAfter(newSibling, mountedSibling);
+        $.mount(newSibling);
     };
 
     /**
@@ -211,15 +211,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * TODO: Needs a test case
      *
-     * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
-     * @param {HTMLElement} mountedSubling: node currently attached to the DOM
+     * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSibling: node currently attached to the DOM
      *
      * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mountBeforeElement = function(prev, mountedSibling) {
-        if (!prev || !mountedSibling) {
+    Treetop.prototype.mountBefore = function(newSibling, mountedSibling) {
+        if (!newSibling || !mountedSibling) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (prev.parentNode) {
+        } else if (newSibling.parentNode) {
             throw new Error(
                 "Treetop: Cannot mount a child element that "+
                 "is already attached to a parent node"
@@ -229,12 +229,12 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 "Treetop: Cannot before a silbing node that is not attached to a parent."
             );
         }
-        mountedSibling.parentNode.insertBefore(prev, mountedSibling);
-        $.mount(prev);
+        mountedSibling.parentNode.insertBefore(newSibling, mountedSibling);
+        $.mount(newSibling);
     };
 
     /**
-     * Removes and unmounts an element from the DOM
+     * Removes and un-mounts an element from the DOM
      *
      * TODO: Needs a test case
      *
@@ -242,7 +242,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * @throws Error if the elements provided is not attached to a parent node
      */
-    Treetop.prototype.unmountElement = function(mountedElement) {
+    Treetop.prototype.unmount = function(mountedElement) {
         if (!mountedElement.parentNode) {
             throw new Error(
                 "Treetop: Cannot unmount a node that is not attached to a parent."
