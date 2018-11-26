@@ -24,10 +24,10 @@ treetop.request( [method], [url], [body], [contentType])
 
 | Param             | Type    | Details                                          |
 |-------------------|---------|--------------------------------------------------|
-| method            | string  | The HTTP request method to use                   |
-| URL               | string  | The URL path                                     |
-| body              | (optional) string | the encoded request body               |
-| contentType       | (optional) string | body encoding type                     |
+| method            | `String`  | The HTTP request method to use                   |
+| URL               | `String`  | The URL path                                     |
+| body              | (optional) `String` | the encoded request body               |
+| contentType       | (optional) `String` | body encoding type                     |
 
 
 ## treetop.submit
@@ -49,7 +49,7 @@ treetop.submit( [HTMLFormElement] )
 
 | Param    | Type             | Details                                              |
 |----------|------------------|------------------------------------------------------|
-| form     | HTMLFormElement  | Submit the form as treetop partial request using XHR |
+| form     |`HTMLFormElement` | Submit the form as treetop partial request using XHR |
 
 
 
@@ -91,6 +91,11 @@ treetop.init( [config] )
 | Param             | Type    | Details                                          |
 |-------------------|---------|--------------------------------------------------|
 | config            | `Object`  | Object treetop component config                  |
+
+#### Throws
+
+`Error`: If the library has already been initialized intentionally or
+implicitly with a call to any API method.
 
 #### Configuration properties:
 

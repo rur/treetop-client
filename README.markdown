@@ -5,7 +5,7 @@
 This is the browser client library for Treetop enabled web servers. See [Treetop Library](https://github.com/rur/treetop) for more details. The _treetop.js_ script must be sourced by the web browser to enable in-page navigation.
 
 ## Client API
-This library defines a `window.treetop` API instance. See [API Docs](https://github.com/rur/treetop-client/blob/master/API.markdown) for more details
+This library defines a `window.treetop` API instance. See [API Docs](API.markdown) for more details
 
 ### Example request using API
 
@@ -24,7 +24,9 @@ treetop.request(
 
 ### Initialization
 
-To make use of custom integration hooks and the built-in components, the client library must be initialized before any partial requests are made. Late arriving configuration will be rejected.
+To make use of custom integration hooks and the built-in components, the client library
+must be initialized before any partial requests are made. Late arriving configuration
+will be rejected.
 
 <!-- TODO: add troubleshooting docs -->
 
