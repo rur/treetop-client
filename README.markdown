@@ -79,7 +79,7 @@ document.addEventListener("treetopcomplete", function () {
 });
 ```
 
-## Custom Component
+## Mounting Component
 
 When an element has been added or removed from the DOM by the Treetop library, the node hierarchy is scanned for elements matching the configured mount/unmount functions.
 
@@ -88,7 +88,7 @@ When an element has been added or removed from the DOM by the Treetop library, t
 * `mountAttrs`: match attribute name after being attached
 * `unmountAttrs`: match attribute name after removal
 
-Custom JS components can make use of this for integration hooks.
+Custom JS components should use these to configure integration hooks.
 
 ## Built-in components
 
@@ -96,12 +96,13 @@ Some build-in components are available when treetop is initialized.
 Built-in components can be enabled or disabled in the config.
 
 ### Feature Flags
+
 Properties supported by Treetop config allow control of build-in components.
 
-| Config Flag       | Type    | Default | Component                                      |
-|-------------------|---------|---------|------------------------------------------------|
-| treetopAttr       |`boolean`| `true`  | Enable the "treetop" attribute component       |
-| treetopLinkAttr   |`boolean`| `true`  | Enable the "treetop-link" attribute component  |
+| Config Flag       | Type    | Default | Component                             |
+|-------------------|---------|---------|---------------------------------------|
+| treetopAttr       |`boolean`| `true`  | Enable the "treetop" attribute        |
+| treetopLinkAttr   |`boolean`| `true`  | Enable the "treetop-link" attribute   |
 
 ### The "treetop" Attribute
 
