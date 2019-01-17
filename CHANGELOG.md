@@ -1,3 +1,8 @@
+## [0.5.6] - 2018-11-25
+### Bugfix
+
+- FormSerializer: Error when an input does not have a 'type' attribute defined
+
 ## [0.5.5] - 2018-11-25
 ### Changed
 
