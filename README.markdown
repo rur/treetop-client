@@ -57,6 +57,28 @@ window.init({
   onUnsupported: (xhr) => { /*...*/ }
 });
 ```
+
+## Treetop Events
+
+When the client library is used to make an XHR request, events will be dispached to indicate overall loading status.
+Note that, by design, the context of specific requests cannot be distinguised this way.
+
+### Treetop Event Types:
+
+* `"treetopstart"` event is dispached when an XHR request is initiated. Will only execute once for concurrent requests.
+* `"treetopcomplete"` event is dispached when all active XHR requests are completed.
+
+Example
+
+```
+document.addEventListener("treetopstart", function () {
+    document.body.classList.add("loading");
+});
+document.addEventListener("treetopcomplete", function () {
+    document.body.classList.remove("loading");
+});
+```
+
 ## Custom Component
 
 When an element has been added or removed from the DOM by the Treetop library, the node hierarchy is scanned for elements matching the configured mount/unmount functions.
