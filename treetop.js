@@ -870,7 +870,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         for (var i = 0, len = elm.elements.length; i < len; i++) {
             oField = elm.elements[i];
             if (!oField.hasAttribute("name")) { continue; }
-            sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? oField.getAttribute("type").toUpperCase() : "TEXT";
+            sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? (oField.getAttribute("type") || "").toUpperCase() : "TEXT";
             if (sFieldType === "FILE" && oField.files.length > 0) {
                 if (this.technique === MULTI_POST) {
                     if (!window.FileReader) {

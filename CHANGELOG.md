@@ -16,6 +16,11 @@ Change how mounting is done internally. New API for editing DOM nodes which inco
     * `treetop.unmount`
 - Treetop client API docs
 
+## [0.5.6] - 2018-11-25
+### Bugfix
+
+- FormSerializer: Error when an input does not have a 'type' attribute defined
+
 ## [0.5.5] - 2018-11-25
 ### Changed
 
