@@ -13,7 +13,7 @@ treetop.request(
 	"application/x-www-form-urlencoded"
 )
 ```
-Notice that no callback mechanism is supported. Response handing is mandated by the protocol, see [Treetop Library](https://github.com/rur/treetop).
+Notice that no callback mechanism is supported. Response handling is mandated by the protocol, see [Treetop Library](https://github.com/rur/treetop).
 
 ##### Usage
 ```

@@ -58,17 +58,19 @@ window.init({
 });
 ```
 
-## Treetop Events
+## Treetop Browser Events
 
-When the client library is used to make an XHR request, events will be dispached to indicate overall loading status.
-Note that, by design, the context of specific requests cannot be distinguised this way.
+When the client library is used to make an XHR request, events will be dispatched to indicate overall loading status.
+Note that, by design, the context of specific requests cannot be accessed this way.
 
 ### Treetop Event Types:
 
-* `"treetopstart"` event is dispached when an XHR request is initiated. Will only execute once for concurrent requests.
-* `"treetopcomplete"` event is dispached when all active XHR requests are completed.
+#### `"treetopstart"`
+This event is dispatched when an XHR request is initiated. It will only execute once for concurrent requests.
+#### `"treetopcomplete"`
+This event is dispatched when all active XHR requests are completed.
 
-Example
+#### Example
 
 ```
 document.addEventListener("treetopstart", function () {

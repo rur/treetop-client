@@ -381,7 +381,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     lastRequestID: 0,
     /**
-     * dictionary is used ot track the last request ID that was successfully resolved
+     * Dictionary is used to track the last request ID that was successfully resolved
      * to a given element "id"
      */
     updates: {},
@@ -432,8 +432,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     endRequest: function () {
         this.activeCount--;
-        if (this.activeCount < 1) {
-            this.activeCount = 0;
+        if (this.activeCount === 0) {
             var event = document.createEvent("Event");
             event.initEvent(this.COMPLETE, false, false);
             document.dispatchEvent(event);
