@@ -4,14 +4,14 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     "use strict";
     if (window.treetop !== void 0) {
         // throwing an error here is important since it prevents window.treetop from being reassigned
-        throw Error("Treetop: treetop global is already defined")
+        throw Error("Treetop: treetop global is already defined");
     }
 
     // First check browser support for essential modern features
-    if (typeof window.HTMLTemplateElement === 'undefined') {
+    if (typeof window.HTMLTemplateElement === "undefined") {
         throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
-    if (!(window.history && typeof window.history.pushState === 'function')) {
+    if (!(window.history && typeof window.history.pushState === "function")) {
         throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
 
@@ -28,19 +28,19 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
             switch (key.toLowerCase()) {
             case "mounttags":
-                $.mountTags = $.copyConfig(config[key])
+                $.mountTags = $.copyConfig(config[key]);
                 break;
             case "mountattrs":
-                $.mountAttrs = $.copyConfig(config[key])
+                $.mountAttrs = $.copyConfig(config[key]);
                 break;
             case "unmounttags":
-                $.unmountTags = $.copyConfig(config[key])
+                $.unmountTags = $.copyConfig(config[key]);
                 break;
             case "unmountattrs":
-                $.unmountAttrs = $.copyConfig(config[key])
+                $.unmountAttrs = $.copyConfig(config[key]);
                 break;
-            case "compose":
-                $.compose = $.copyConfig(config[key])
+            case "merge":
+                $.merge = $.copyConfig(config[key]);
                 break;
             case "onnetworkerror":
                 if (typeof config[key] === "function") {
@@ -109,25 +109,25 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         initialized = true;
         // see https://plainjs.com/javascript/events/running-code-when-the-document-is-ready-15/
-        if (document.readyState!='loading') {
+        if (document.readyState != "loading") {
             window.setTimeout(function () {
                 init(config);
             });
         } else if (document.addEventListener) {
             // modern browsers
-            document.addEventListener('DOMContentLoaded', function(){
+            document.addEventListener("DOMContentLoaded", function(){
                 init(config);
             });
         } else {
             // IE <= 8
-            document.attachEvent('onreadystatechange', function(){
-                if (document.readyState=='complete') init(config);
+            document.attachEvent("onreadystatechange", function(){
+                if (document.readyState == "complete") init(config);
             });
         }
     };
 
     /**
-     * Update a existing DOM node with a new element. The elements will be composed
+     * Update a existing DOM node with a new element. The elements will be merged
      * and (un)mounted in the normal Treetop way.
      *
      * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
@@ -140,11 +140,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         initialized = true;
         if (!next || !prev) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (next.parentNode) {
-            throw new Error(
-                "Treetop: Cannot update with an element that "+
-                "is already attached to a parent node"
-            );
         } else if (!prev.parentNode) {
             throw new Error(
                 "Treetop: Cannot update an element that is not attached to the DOM"
@@ -153,6 +148,89 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         $.updateElement(next, prev);
     };
 
+
+    /**
+     * Appends a node to a parent and mounts treetop components.
+     *
+     * TODO: Needs a test case
+     *
+     * @param {HTMLElement} child: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedParent: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountChild = function(child, mountedParent) {
+        if (!child || !mountedParent) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        }
+        mountedParent.appendChild(child);
+        $.mount(child);
+    };
+
+    /**
+     * Inserts new node as a sibling after an element aready attache to a parent node.
+     * The new node will be mounted.
+     *
+     * TODO: Needs a test case
+     *
+     * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSibling: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountAfter = function(newSibling, mountedSibling) {
+        if (!newSibling || !mountedSibling) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (!mountedSibling.parentNode) {
+            throw new Error(
+                "Treetop: Cannot mount after a silbing node that is not attached to a parent."
+            );
+        }
+        mountedSibling.parentNode.insertAfter(newSibling, mountedSibling);
+        $.mount(newSibling);
+    };
+
+    /**
+     * Inserts new node as a sibling before an element aready attached to a parent node.
+     * The new node will be mounted.
+     *
+     * TODO: Needs a test case
+     *
+     * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
+     * @param {HTMLElement} mountedSibling: node currently attached to the DOM
+     *
+     * @throws Error if the elements provided are not valid in some obvious way
+     */
+    Treetop.prototype.mountBefore = function(newSibling, mountedSibling) {
+        if (!newSibling || !mountedSibling) {
+            throw new Error("Treetop: Expecting two HTMLElements");
+        } else if (!mountedSibling.parentNode) {
+            throw new Error(
+                "Treetop: Cannot mount before a silbing node that is not attached to a parent."
+            );
+        }
+        mountedSibling.parentNode.insertBefore(newSibling, mountedSibling);
+        $.mount(newSibling);
+    };
+
+    /**
+     * Removes and un-mounts an element from the DOM
+     *
+     * TODO: Needs a test case
+     *
+     * @param {HTMLElement} mountedElement: HTMLElement, not attached and mounted to the DOM
+     *
+     * @throws Error if the elements provided is not attached to a parent node
+     */
+    Treetop.prototype.unmount = function(mountedElement) {
+        if (!mountedElement.parentNode) {
+            throw new Error(
+                "Treetop: Cannot unmount a node that is not attached to a parent."
+            );
+        }
+        mountedElement.parentNode.removeChild(mountedElement);
+        $.unmount(mountedElement);
+    };
 
     /**
      * Get a copy of the treetop configuration,
@@ -168,7 +246,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             mountAttrs: $.copyConfig($.mountAttrs),
             unmountTags: $.copyConfig($.unmountTags),
             unmountAttrs: $.copyConfig($.unmountAttrs),
-            compose: $.copyConfig($.compose),
+            merge: $.copyConfig($.merge),
             onNetworkError: $.onNetworkError,
             onUnsupported: $.onUnsupported,
         };
@@ -196,15 +274,20 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         if (!xhr) {
             throw new Error("Treetop: XHR is not supproted by this browser");
         }
-        var requestID = $.lastRequestID = $.lastRequestID + 1
+        var requestID = $.lastRequestID = $.lastRequestID + 1;
         xhr.open(method.toUpperCase(), url, true);
         xhr.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
         if (contentType) {
             xhr.setRequestHeader("content-type", contentType);
         }
         xhr.onreadystatechange = function() {
-            if (xhr.readyState !== 4 || xhr.status < 100) {
-                return
+            if (xhr.readyState !== 4) {
+                return;
+            }
+            $.endRequest(requestID);
+            if (xhr.status < 100) {
+                // error occurred, do not attempt to process contents
+                return;
             }
             // check if the response can be processed by treetop client library,
             // otherwise trigger 'onUnsupported' signal
@@ -238,6 +321,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
         };
         xhr.send(body || null);
+        $.startRequest(requestID);
     };
 
     /**
@@ -247,18 +331,18 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     Treetop.prototype.submit = function (formElement) {
         // make sure an error is raise if initialization happens after the API is used
         initialized = true;
-        function dataHandler(fdata) {
+        function dataHandler(formData) {
             window.setTimeout(function () {
                 window.treetop.request(
-                    fdata.method,
-                    fdata.action,
-                    fdata.data,
-                    fdata.enctype
+                    formData.method,
+                    formData.action,
+                    formData.data,
+                    formData.enctype
                 );
             }, 0);
         }
         new FormSerializer(formElement, dataHandler);
-    }
+    };
 
     Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
     Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
@@ -285,10 +369,10 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     onNetworkError: null,
 
     /**
-     * Store the treetop composition definitions
+     * Store the treetop custom merge functions
      * @type {Object} object reference
      */
-    compose: {},
+    merge: {},
 
     /**
      * Track order of requests as well as the elements that were updated.
@@ -296,7 +380,16 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * responses should be ignored.
      */
     lastRequestID: 0,
+    /**
+     * Dictionary is used to track the last request ID that was successfully resolved
+     * to a given element "id"
+     */
     updates: {},
+
+    /**
+     * Track the number of active XHR requests.
+     */
+    activeCount: 0,
 
     /**
      * White-list of request methods types
@@ -325,6 +418,27 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     PARTIAL_CONTENT_TYPE: "application/x.treetop-html-partial+xml",
     FRAGMENT_CONTENT_TYPE: "application/x.treetop-html-fragment+xml",
 
+    START: "treetopstart",
+    COMPLETE: "treetopcomplete",
+
+    startRequest: function () {
+        this.activeCount++;
+        if (this.activeCount === 1) {
+            var event = document.createEvent("Event");
+            event.initEvent(this.START, false, false);
+            document.dispatchEvent(event);
+        }
+    },
+
+    endRequest: function () {
+        this.activeCount--;
+        if (this.activeCount === 0) {
+            var event = document.createEvent("Event");
+            event.initEvent(this.COMPLETE, false, false);
+            document.dispatchEvent(event);
+        }
+    },
+
     /**
      * XHR onload handler
      *
@@ -342,7 +456,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         i = len = temp = child = old = nodes = undefined;
 
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
-        temp = document.createElement('template');
+        temp = document.createElement("template");
         temp.innerHTML = xhr.responseText;
         nodes = new Array(temp.content.children.length);
         for (i = 0, len = temp.content.children.length; i < len; i++) {
@@ -413,13 +527,16 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     },
 
     /**
-     * Default treetop composition method
+     * Default treetop merge method. Replace element followed by sync
+     * mount of next and unmount of previous elements.
      *
      * @param  {HTMLElement} next The element recently loaded from the API
      * @param  {HTMLElement} prev The element currently within the DOM
      */
     defaultComposition: function(next, prev) {
         prev.parentNode.replaceChild(next, prev);
+        this.mount(next);
+        this.unmount(prev);
     },
 
     /**
@@ -430,40 +547,26 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     */
     updateElement: function(next, prev) {
         var $ = this;
-        var nextCompose = next.getAttribute("treetop-compose");
-        var prevCompose = prev.getAttribute("treetop-compose");
-        var compose = $.defaultComposition;
-        if (typeof nextCompose === "string" &&
-            typeof prevCompose === "string"
+        var nextValue = next.getAttribute("treetop-merge");
+        var prevValue = prev.getAttribute("treetop-merge");
+        if (typeof nextValue === "string" &&
+            typeof prevValue === "string" &&
+            nextValue !== ""
         ) {
-            nextCompose = nextCompose.toLowerCase();
-            prevCompose = prevCompose.toLowerCase();
+            nextValue = nextValue.toLowerCase();
+            prevValue = prevValue.toLowerCase();
             if (
-              nextCompose.length &&
-              nextCompose === prevCompose &&
-              $.compose.hasOwnProperty(nextCompose) &&
-              typeof $.compose[nextCompose] === "function"
+              nextValue === prevValue &&
+              $.merge.hasOwnProperty(nextValue) &&
+              typeof $.merge[nextValue] === "function"
             ) {
-                compose = $.compose[nextCompose];
+                // all criteria have been met, delegate update to custom merge function.
+                var mergeFn = $.merge[nextValue];
+                mergeFn(next, prev);
+                return;
             }
         }
-
-        var asyncMount = compose(next, prev);
-        if (typeof asyncMount === "function") {
-            asyncMount($.asyncMountFn(next, prev));
-        } else {
-            $.mount(next);
-            $.unmount(prev);
-        }
-    },
-
-
-    asyncMountFn: function (next, prev) {
-        var $ = this;
-        return function () {
-            $.mount(next);
-            $.unmount(prev);
-        };
+        $.defaultComposition(next, prev);
     },
 
     /**
@@ -544,10 +647,10 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     // see https://www.quirksmode.org/js/xmlhttp.html
     XMLHttpFactories: [
-        function () {return new XMLHttpRequest()},
-        function () {return new ActiveXObject("Msxml2.XMLHTTP")},
-        function () {return new ActiveXObject("Msxml3.XMLHTTP")},
-        function () {return new ActiveXObject("Microsoft.XMLHTTP")}
+        function () {return new XMLHttpRequest();},
+        function () {return new ActiveXObject("Msxml2.XMLHTTP");},
+        function () {return new ActiveXObject("Msxml3.XMLHTTP");},
+        function () {return new ActiveXObject("Microsoft.XMLHTTP");}
     ],
 
     createXMLHTTPObject: function() {
@@ -630,7 +733,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         var elm = evt.target || evt.srcElement;
         if (elm.hasAttribute("treetop-link")) {
             var href = elm.getAttribute("treetop-link");
-            window.treetop.request("GET", href)
+            window.treetop.request("GET", href);
         }
     }
 
@@ -685,7 +788,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         ) {
             // Use default browser behavior when a modifier key is pressed
             // or treetop has been explicity disabled
-            return
+            return;
         }
         if (elm.href && elm.hasAttribute("treetop")) {
             // hijack standard link click, extract href of link and

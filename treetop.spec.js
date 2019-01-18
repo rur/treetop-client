@@ -228,7 +228,7 @@ describe('Treetop', () => {
     beforeEach(() => {
       el = document.createElement("ul");
       el.setAttribute("id", "test");
-      el.setAttribute("treetop-compose", "test");
+      el.setAttribute("treetop-merge", "test");
       el.innerHTML = "<li>1</li><li>2</li><li>3</li>";
       document.body.appendChild(el);
     });
@@ -242,7 +242,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<ul id="test" treetop-compose="test"><li>4</li><li>5</li><li>6</li></ul>'
+        '<ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul>'
       );
       expect(document.body.textContent).to.equal("123456");
     });
@@ -252,7 +252,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<ul id="test" treetop-compose="something-else"><li>4</li><li>5</li><li>6</li></ul>'
+        '<ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul>'
       );
       expect(document.body.textContent).to.equal("456");
     });

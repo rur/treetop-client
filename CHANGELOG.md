@@ -1,3 +1,21 @@
+## [0.6.0] - 2018-11-25
+
+Change how mounting is done internally. New API for editing DOM nodes which incorporates component (un)mounting.
+
+### Changed
+
+- Change use of term "compose" in favor of "merge"
+- Mount and unmount no longer supported in custom merge functions
+    * new DOM editing API must be used.
+
+### Added
+- New functions for editing DOM nodes while mounting/unmounting components.
+    * `treetop.mountChild`
+    * `treetop.mountAfter`
+    * `treetop.mountBefore`
+    * `treetop.unmount`
+- Treetop client API docs
+
 ## [0.5.6] - 2018-11-25
 ### Bugfix
 

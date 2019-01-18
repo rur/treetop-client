@@ -28,7 +28,7 @@ global.window.TREETOP_CONFIG = {
         "test": sinon.spy(),
         "test2": sinon.spy()
     },
-    compose: {
+    merge: {
         "test": (next, prev) => {
             Array.from(next.children).forEach(child => {
                 prev.appendChild(child);
