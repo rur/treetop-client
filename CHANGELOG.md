@@ -1,3 +1,11 @@
+## [0.6.1] - 2019-02-08
+
+Change how mounting is done internally. New API for editing DOM nodes which incorporates component (un)mounting.
+
+### Bugfix
+
+- treetop-link attribute component changed to use `event.currentTarget` to obtain a URL.
+
 ## [0.6.0] - 2018-11-25
 
 Change how mounting is done internally. New API for editing DOM nodes which incorporates component (un)mounting.

@@ -730,8 +730,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     function linkClick(_evt) {
         var evt = _evt || window.event;
-        var elm = evt.target || evt.srcElement;
-        if (elm.hasAttribute("treetop-link")) {
+        var elm = evt.currentTarget;
+        if (elm && elm.hasAttribute("treetop-link")) {
             var href = elm.getAttribute("treetop-link");
             window.treetop.request("GET", href);
         }
