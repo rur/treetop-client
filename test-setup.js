@@ -12,17 +12,48 @@ const dom = new jsdom.JSDOM(DEFAULT_HTML, {
 })
 global.document = dom.window.document
 global.window = dom.window
+
+// globals
+global.history = dom.window.history
+global.Uint8Array = dom.window.Uint8Array
+
+// timer testing shim
+global.window.__TIMERS = []
+global.window.setTimeout = function(f, d){
+    global.window.__TIMERS.push([f, d])
+}
+global.window.flushTimers = function(maxIterations){
+    const timers = global.window.__TIMERS
+    if (maxIterations === 0){
+        return
+    } else if (maxIterations === undefined) {
+        maxIterations = 10
+    }
+    global.window.__TIMERS = []
+    // sort timeouts so that they are executed in the order
+    // defined by their duration
+    timers.sort(function compare(a, b) {
+        if (a[1] < b[1]) {
+            return -1;
+        }
+        if (a[1] > b[1]) {
+            return 1;
+        }
+        return 0;
+    });
+    for (let i = 0; i < timers.length; i++) {
+        timers[i][0]();
+    }
+    if (global.window.__TIMERS.length > 0) {
+        global.window.flushTimers(maxIterations -1)
+    }
+}
+
 global.window.TREETOP_CONFIG = {
     treetopAttr: false,
-    mountTags: {
-        "test-node": sinon.spy()
-    },
     mountAttrs: {
         "test": sinon.spy(),
         "test2": sinon.spy(),
-    },
-    unmountTags: {
-        "test-node": sinon.spy()
     },
     unmountAttrs: {
         "test": sinon.spy(),

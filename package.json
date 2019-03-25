@@ -1,6 +1,6 @@
 {
   "name": "treetop-client",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Browser client library for Treetop enabled web application",
   "main": "treetop.js",
   "scripts": {

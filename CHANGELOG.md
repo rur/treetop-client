@@ -1,3 +1,18 @@
+## [0.7.0] - 2019-03-21
+
+### Changed
+
+- Remove support for mounting component matching HTML tag names;
+- When treetop attribute component is enabled, add an attribute to body allowing it to be disabled;
+- Only handle popstate when the state being popped has a treetop flag in state;
+- Unmount nodes before they are removed from the DOM;
+- Send request URL as second parameter to `onUnsupported` handler;
+- Make global browser footprint of treetop client library more clearly defined.
+
+### Bugfix
+
+- Prevent an exceptions thrown by a mount function from affect internals or mounting of other components.
+
 ## [0.6.1] - 2019-02-08
 
 ### Bugfix
@@ -30,7 +45,7 @@ Change how mounting is done internally. New API for editing DOM nodes which inco
 ## [0.5.5] - 2018-11-25
 ### Changed
 
-- Treetop initialization will now fail if any API method is called beforehand.
+- Treetop initialization will now fail if any API method is called beforehand;
 - New "treetopLinkAttr" config feature flag.
 - README docs improved
 

@@ -38,12 +38,6 @@ The config object is the same in both cases.
 ```
 window.init({
   treetopAttr: true,
-  mountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
-  unmountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
@@ -85,8 +79,6 @@ document.addEventListener("treetopcomplete", function () {
 
 When an element has been added or removed from the DOM by the Treetop library, the node hierarchy is scanned for elements matching the configured mount/unmount functions.
 
-* `mountTags`: match element tag name after being added
-* `unmountTags`: match element tag name after removal
 * `mountAttrs`: match attribute name after being attached
 * `unmountAttrs`: match attribute name after removal
 

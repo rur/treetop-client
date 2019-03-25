@@ -20,10 +20,9 @@ describe('Treetop', () => {
     };
     var config = treetop.config();
     // reset all mount spys
-    Object.values(config.mountTags).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
     Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
-    Object.values(config.unmountTags).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
     Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
+    window.flushTimers();
   });
 
   afterEach(() => {
@@ -117,6 +116,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test">after!</em>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("after!");
     });
 
@@ -127,6 +127,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test_other">after!</em>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("before!");
     });
   });
@@ -148,6 +149,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         'TESTING'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("before!");
     });
   });
@@ -172,11 +174,13 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test">sooner!</em>'
      );
+      window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<em id="test">later!</em>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("sooner!");
     });
 
@@ -192,11 +196,13 @@ describe('Treetop', () => {
         { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
         '<em id="test">sooner!</em>'
       );
+      window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
         '<em id="test2">later!</em>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("sooner!later!");
     });
 
@@ -213,11 +219,13 @@ describe('Treetop', () => {
         { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
         '<p id="test"><span id="test-sub">container!</span></p>'
       );
+      window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
         '<em id="test-sub">child!</em>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("container!");
     });
 
@@ -244,6 +252,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("123456");
     });
 
@@ -254,6 +263,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("456");
     });
   });
@@ -267,6 +277,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<title>New Title!</title>'
       );
+      window.flushTimers()
       expect(document.title).to.equal("New Title!");
     })
 
@@ -277,6 +288,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<body>New Body!</body>'
       );
+      window.flushTimers()
       expect(document.body.textContent).not.to.equal("Body!");
     })
 
@@ -289,6 +301,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<tr id="test-table"><td>New Cell!</td></tr>'
       );
+      window.flushTimers()
       expect(document.body.textContent).to.equal("New Cell!");
     })
   });
@@ -311,6 +324,7 @@ describe('Treetop', () => {
           { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
           '<em id="test">after!</em>'
         );
+        window.flushTimers()
         return this.nue = document.getElementById('test');
       });
 
@@ -342,39 +356,14 @@ describe('Treetop', () => {
       document.body.removeChild(document.getElementById("test2"));
     });
 
-    it('should have called the mount on the element', () => {
-      treetop.request("GET", "/test");
-      requests[0].respond(
-        200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p test>New Cell!</p></test-node>'
-      );
-      var el = document.getElementById("test");
-      expect(el.tagName).to.equal("TEST-NODE");
-      var mount = config.mountTags["test-node"];
-      expect(calledWithStrict(mount, el)).to.be.true;
-    });
-
-    it('should not have called unmount on the new element', () => {
-      treetop.request("GET", "/test");
-      requests[0].respond(
-        200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p test>New Cell!</p></test-node>'
-      );
-      var el = document.getElementById("test");
-      expect(el.tagName).to.equal("TEST-NODE");
-      var unmount = config.unmountTags["test-node"];
-      expect(calledWithStrict(unmount, el)).to.be.false;
-    });
-
     it('should have called the mount on the attribute', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
       );
+      window.flushTimers()
       var el = document.getElementById("test-child");
       var mount = config.mountAttrs["test"]
       expect(calledWithStrict(mount, el)).to.be.true;
@@ -385,70 +374,33 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
       );
+      window.flushTimers()
       var el = document.getElementById("test-child");
       var unmount = config.unmountAttrs["test"]
       expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
     describe('when unmounted', () => {
-      var el, el2;
-      beforeEach(() => {
+      it('should have called the unmount on the attribute', () => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
           { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
+          '<div id="test"><p id="test-child" test>New Cell!</p></div>'
         );
-        el = document.getElementById("test");
-        el2 = document.getElementById("test-child");
+        window.flushTimers() // ensure any errors are raised at this stage
+        var el = document.getElementById("test-child");
         treetop.request("GET", "/test");
         requests[1].respond(
           200,
           { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
           '<div id="test">after!</div><div id="test2">after2!</div>'
         );
-      });
-
-      it('should have called the unmount on the element', () => {
-        var unmount = config.unmountTags["test-node"]
-        expect(calledWithStrict(unmount, el)).to.be.true;
-      });
-
-      it('should have called the unmount on the attribute', () => {
+        window.flushTimers()
         var unmount = config.unmountAttrs["test"]
-        expect(calledWithStrict(unmount, el2)).to.be.true;
-      });
-    });
-
-    describe('when unmounted', () => {
-      var el, el2;
-      beforeEach(() => {
-        treetop.request("GET", "/test");
-        requests[0].respond(
-          200,
-          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-          '<test-node id="test"><p id="test-child" test>New Cell!</p></test-node>'
-        );
-        el = document.getElementById("test");
-        el2 = document.getElementById("test-child");
-        treetop.request("GET", "/test");
-        requests[1].respond(
-          200,
-          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-          '<div id="test">after!</div><div id="test2">after2!</div>'
-        );
-      });
-
-      it('should have called the unmount on the element', () => {
-        var unmount = config.unmountTags["test-node"]
         expect(calledWithStrict(unmount, el)).to.be.true;
-      });
-
-      it('should have called the unmount on the attribute', () => {
-        var unmount = config.unmountAttrs["test"]
-        expect(calledWithStrict(unmount, el2)).to.be.true;
       });
     });
 
@@ -460,8 +412,9 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p id="test-child" test test2>New Cell!</p></test-node>'
+        '<div id="test"><p id="test-child" test test2>New Cell!</p></div>'
       );
+      window.flushTimers()
       el = document.getElementById("test-child");
       expect(calledWithStrict(mount, el)).to.be.true;
       expect(calledWithStrict(mount2, el)).to.be.true;
@@ -475,8 +428,9 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<test-node id="test"><p id="test-child" test test2>New Data</p></test-node>'
+        '<div id="test"><p id="test-child" test test2>New Data</p></div>'
       );
+      window.flushTimers()
       el = document.getElementById("test-child");
       treetop.request("GET", "/test");
       requests[1].respond(
@@ -484,6 +438,7 @@ describe('Treetop', () => {
         { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
         '<div id="test">replaced</div>'
       );
+      window.flushTimers()
       expect(calledWithStrict(unmount, el)).to.be.true;
       expect(calledWithStrict(unmount2, el)).to.be.true;
     });

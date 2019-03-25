@@ -61,12 +61,6 @@ One time initialization of Treetop with configuration which will be stored inter
 window.init({
   treetopAttr: true,
   treetopLinkAttr: true,
-  mountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
-  unmountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
@@ -77,7 +71,7 @@ window.init({
     "my-custom-merge": (next, prev) => { /*...*/ }
   },
   onNetworkError: (xhr) => { /*...*/ },
-  onUnsupported: (xhr) => { /*...*/ }
+  onUnsupported: (xhr, url) => { /*...*/ }
 });
 ```
 
@@ -101,13 +95,11 @@ implicitly with a call to any API method.
 
 | Param             | Type    | Default | Details                                           |
 |-------------------|---------|---------|---------------------------------------------------|
-| mountTags         | `Object`  | `{}`    | Component hooks keyed by match pattern            |
-| unmountTags       | `Object`  | `{}`    | Component hooks keyed by match pattern            |
 | mountAttrs        | `Object`  | `{}`    | Component hooks keyed by match pattern            |
 | unmountAttrs      | `Object`  | `{}`    | Component hooks keyed by match pattern            |
 | merge             | `Object`  | `{}`    | Custom merge function with a merge-name key       |
 | onNetworkError    | `Function`| `null`  | Network connection error callback, (xhr) => {...} |
-| onUnsupported     | `Function`| `null`  | Network connection error callback, (xhr) => {...} |
+| onUnsupported     | `Function`| `null`  | Non-Treetop response error callback, (xhr, url) => {...} |
 | treetopAttr       | `Boolean` | `true`  | treetop attribute component feature flag          |
 | treetopLinkAttr   | `Boolean` | `true`  | treetop-link attribute component feature flag     |
 
@@ -120,12 +112,6 @@ treetop.config()
 {
   treetopAttr: true,
   treetopLinkAttr: true,
-  mountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
-  unmountTags: {
-    "my-tag": (el) => { /*...*/ }
-  },
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
@@ -136,7 +122,7 @@ treetop.config()
     "my-custom-merge": (next, prev) => { /*...*/ }
   },
   onNetworkError: (xhr) => { /*...*/ },
-  onUnsupported: (xhr) => { /*...*/ }
+  onUnsupported: (xhr, url) => { /*...*/ }
 }
 ```
 

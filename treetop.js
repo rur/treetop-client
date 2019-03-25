@@ -1,4 +1,24 @@
-/* global window, document, XMLHttpRequest, ActiveXObject */
+/* global window, document, XMLHttpRequest, ActiveXObject, history, setTimeout, Uint8Array */
+
+// Web browser client API for [Treetop request library](https://github.com/rur/treetop).
+//
+// For an introduction and API docs see https://github.com/rur/treetop-client
+//
+// This script is written with the following goals:
+//      1. Work out-of-the-box, without a build tool or wrapper;
+//      2. Maximize compatibility for both modern and legacy browsers;
+//      3. Minimize browser footprint to accommodate the use of other JS libraries and frameworks.
+//
+// Compatibility Caveats
+//      The following modern browser APIs are essential. A 'polyfil' must available when necessary.
+//       * `history.pushState` is required so that the location can be updated following partial navigation;
+//       * `HTMLTemplateElement` is required for reliable decoding of HTML strings.
+//
+// Global browser footprint of this script:
+//      * Assigns `window.treetop` with Treetop API instance;
+//      * Assigns `window.onpopstate` with a handler that refreshes the page when a treetop entry is popped from the browser history;
+//      * Built-in components attach various event listeners when mounted. (Built-ins can be disabled, see docs)
+//
 
 window.treetop = (function ($, BodyComponent, FormSerializer) {
     "use strict";
@@ -11,7 +31,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     if (typeof window.HTMLTemplateElement === "undefined") {
         throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
-    if (!(window.history && typeof window.history.pushState === "function")) {
+    if (!(history && typeof history.pushState === "function")) {
         throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
 
@@ -27,15 +47,11 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 continue;
             }
             switch (key.toLowerCase()) {
-            case "mounttags":
-                $.mountTags = $.copyConfig(config[key]);
-                break;
+            case "mountattr":
             case "mountattrs":
                 $.mountAttrs = $.copyConfig(config[key]);
                 break;
-            case "unmounttags":
-                $.unmountTags = $.copyConfig(config[key]);
-                break;
+            case "unmountattr":
             case "unmountattrs":
                 $.unmountAttrs = $.copyConfig(config[key]);
                 break;
@@ -58,28 +74,42 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             case "treetoplinkattr":
                 treetopLinkAttr = !(config[key] === false);
                 continue;
+            case "mounttags":
+            case "unmounttags":
+                try {
+                    throw new Error("Treetop: Mounting components based upon tag name is no longer supported");
+                } catch (err) {
+                    // throw error later allowing init to finish its work
+                    $.throwErrorAsync(err);
+                }
+                break;
             default:
-                throw new Error(
-                    "Treetop: unknown configuration property '" + key + "'"
-                );
+                try {
+                    throw new Error("Treetop: unknown configuration property '" + key + "'");
+                } catch (err) {
+                    // throw error later allowing init to finish its work
+                    $.throwErrorAsync(err);
+                }
             }
         }
 
         // Add built-in component to configuration.
-        // Notice that custom components that conflict will be clobbered.
+        // Notice that conflicting custom components will be clobbered.
         if (treetopAttr) {
-            delete $.mountTags["treetop"];
-            $.mountTags["body"] = BodyComponent.bodyMount;
+            document.body.setAttribute("treetop-attr", "enabled")
+            $.mountAttrs["treetop-attr"] = BodyComponent.bodyMount;
         }
         if (treetopLinkAttr) {
             $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
         }
 
-        $.mount(document.body);
         window.onpopstate = function (_evt) {
             var evt = _evt || window.event;
-            $.browserPopState(evt);
+            if (evt.state && evt.state.treetop) {
+                $.browserPopState(evt);
+            }
         };
+        $.mount(document.body);
     }
 
     /**
@@ -110,7 +140,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         initialized = true;
         // see https://plainjs.com/javascript/events/running-code-when-the-document-is-ready-15/
         if (document.readyState != "loading") {
-            window.setTimeout(function () {
+            // async used for the sake of consistency with other conditions
+            setTimeout(function () {
                 init(config);
             });
         } else if (document.addEventListener) {
@@ -242,9 +273,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     Treetop.prototype.config = function () {
         return {
-            mountTags: $.copyConfig($.mountTags),
             mountAttrs: $.copyConfig($.mountAttrs),
-            unmountTags: $.copyConfig($.unmountTags),
             unmountAttrs: $.copyConfig($.unmountAttrs),
             merge: $.copyConfig($.merge),
             onNetworkError: $.onNetworkError,
@@ -299,7 +328,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 // this response is part of a larger page, add a history entry before processing
                 var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
                 // NOTE: This HTML5 feature will require a polyfill for some browsers
-                window.history.pushState({
+                history.pushState({
                     treetop: true,
                 }, "", responseURL);
                 $.xhrProcess(xhr, requestID, true);
@@ -311,7 +340,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             } else if(typeof $.onUnsupported === "function") {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.
-                $.onUnsupported(xhr);
+                $.onUnsupported(xhr, url);
             }
         };
         xhr.onerror = function () {
@@ -326,20 +355,17 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
     /**
      * treetop.submit will trigger an XHR request derived from the state
-     * of a supplied HTML Form element.
+     * of a supplied HTML Form element. Request will be sent asynchronously.
+     *
+     * @public
+     * @param {HTMLFormElement} formElement Reference to a HTML form element whose state is to be encoded into a treetop request
+     * @throws {Error} If an XHR request cannot derived from the element supplied for any reason.
      */
     Treetop.prototype.submit = function (formElement) {
-        // make sure an error is raise if initialization happens after the API is used
-        initialized = true;
-        function dataHandler(formData) {
-            window.setTimeout(function () {
-                window.treetop.request(
-                    formData.method,
-                    formData.action,
-                    formData.data,
-                    formData.enctype
-                );
-            }, 0);
+        var api = this;
+        initialized = true;  // ensure that late arriving configuration will be rejected
+        function dataHandler(method, action, data, enctype) {
+            api.request(method, action, data, enctype);
         }
         new FormSerializer(formElement, dataHandler);
     };
@@ -452,8 +478,8 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     xhrProcess: function (xhr, requestID, isPagePartial) {
         "use strict";
         var $ = this;
-        var i, len, temp, child, old, nodes;
-        i = len = temp = child = old = nodes = undefined;
+        var i, len, temp, neu, old, nodes, matches;
+        i = len = temp = neu = old = nodes = matches = undefined;
 
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
         temp = document.createElement("template");
@@ -462,12 +488,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         for (i = 0, len = temp.content.children.length; i < len; i++) {
             nodes[i] = temp.content.children[i];
         }
+        matches = []
         for (i = 0, len = nodes.length; i < len; i++) {
-            child = nodes[i];
-            if ($.SINGLETONS[child.tagName.toUpperCase()]) {
-                old = document.getElementsByTagName(child.nodeName)[0];
-            } else if (child.id) {
-                old = document.getElementById(child.id);
+            neu = nodes[i];
+            if ($.SINGLETONS[neu.tagName.toUpperCase()]) {
+                old = document.getElementsByTagName(neu.nodeName)[0];
+            } else if (neu.id) {
+                old = document.getElementById(neu.id);
             } else {
                 old = null;
             }
@@ -476,11 +503,14 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             if (old && requestID >= $.getLastUpdate(old)) {
                 if (isPagePartial) {
                     $.updates["BODY"] = requestID;
-                } else if (child.id) {
-                    $.updates["#" + child.id] = requestID;
+                } else if (neu.id) {
+                    $.updates["#" + neu.id] = requestID;
                 }
-                $.updateElement(child, old);
+                matches.push(neu, old)
             }
+        }
+        for (i = 0; i < matches.length; i += 2) {
+            $.updateElement(matches[i], matches[i+1]);
         }
     },
 
@@ -534,9 +564,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @param  {HTMLElement} prev The element currently within the DOM
      */
     defaultComposition: function(next, prev) {
+        this.unmount(prev);
         prev.parentNode.replaceChild(next, prev);
         this.mount(next);
-        this.unmount(prev);
     },
 
     /**
@@ -583,17 +613,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             // this is not an ELEMENT_NODE
             return;
         }
-        // depth first recursion
+        // depth-first recursion
         for (i = 0; i < el.children.length; i++) {
             $.mount(el.children[i]);
-        }
-        // mount tag component first
-        name = el.tagName.toLowerCase();
-        if ($.mountTags.hasOwnProperty(name)) {
-            comp = $.mountTags[name];
-            if (typeof comp === "function") {
-                comp(el);
-            }
         }
         // mount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
@@ -601,7 +623,11 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             if ($.mountAttrs.hasOwnProperty(name)) {
                 comp = $.mountAttrs[name];
                 if (typeof comp === "function") {
-                    comp(el);
+                    try {
+                        comp(el);
+                    } catch (err) {
+                        $.throwErrorAsync(err)
+                    }
                 }
             }
         }
@@ -625,21 +651,17 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         for (i = 0; i < el.children.length; i++) {
             $.unmount(el.children[i]);
         }
-        // unmount tag component first
-        name = el.tagName.toLowerCase();
-        if ($.unmountTags.hasOwnProperty(name)) {
-            comp = $.unmountTags[name];
-            if (typeof comp === "function") {
-                comp(el);
-            }
-        }
         // unmount attribute components
         for (j = el.attributes.length - 1; j >= 0; j--) {
             name = el.attributes[j].name.toLowerCase();
             if ($.unmountAttrs.hasOwnProperty(name)) {
                 comp = $.unmountAttrs[name];
                 if (typeof comp === "function") {
-                    comp(el);
+                    try {
+                        comp(el);
+                    } catch (err) {
+                        $.throwErrorAsync(err)
+                    }
                 }
             }
         }
@@ -690,8 +712,30 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         return target;
     },
 
+    /**
+     * Used to throw non-fatal errors.
+     *
+     * @param {Error} err Error instance to rethrow
+     */
+    throwErrorAsync: function(err) {
+        setTimeout(function(){
+            throw err;
+        });
+    },
 }, (function ($) {
     "use strict";
+
+    function _attrEquals(el, attr, expect) {
+        if (el && typeof el.hasAttribute === "function" && el.hasAttribute(attr)) {
+            var value = el.getAttribute(attr);
+            if (!value && !expect) {
+                return true;
+            } else if (typeof value === "string" && typeof expect === "string") {
+                return value.toLowerCase() === expect.toLowerCase();
+            }
+        }
+        return false;
+    }
 
     /**
      * This is the implementation of the 'treetop' attributes what can be used to overload
@@ -703,6 +747,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     // handlers:
     function documentClick(_evt) {
+        if (!_attrEquals(document.body, "treetop-attr", "enabled")) {
+            return
+        }
         var evt = _evt || window.event;
         var elm = evt.target || evt.srcElement;
         while (elm.tagName.toUpperCase() !== "A") {
@@ -723,6 +770,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     }
 
     function onSubmit(_evt) {
+        if (!_attrEquals(document.body, "treetop-attr", "enabled")) {
+            return
+        }
         var evt = _evt || window.event;
         var elm = evt.target || evt.srcElement;
         $.formSubmit(evt, elm);
@@ -982,13 +1032,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             }
             break;
         }
-
-        this.onRequestReady({
-            method: method,
-            action: url,
-            data: data,
-            enctype: enctype
-        });
+        // Since processStatus may or _may not_ be called synchronously, ensure that the callback
+        // is always invoked asynchronously.
+        setTimeout(this.onRequestReady, 0, method, url, data, enctype);
     };
 
     /**
@@ -1009,7 +1055,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     function createArrayBuffer(str) {
         var nBytes = str.length;
-        var ui8Data = new window.Uint8Array(nBytes);
+        var ui8Data = new Uint8Array(nBytes);
         for (var i = 0; i < nBytes; i++) {
             ui8Data[i] = str.charCodeAt(i) & 0xff;
         }
