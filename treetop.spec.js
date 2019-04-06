@@ -89,6 +89,43 @@ describe('Treetop', () => {
     it('should have a body', () => expect(req.requestBody).to.equal("a=123&b=987"));
   });
 
+  describe('include headers', () => {
+    it('should include one header', () => {
+      treetop.request("POST", "/test", "a=123&b=987", "application/x-www-form-urlencoded", [["x-custom-header", "VALUE"]]);
+      var req = requests[0];
+      expect(req.requestHeaders["x-custom-header"]).to.eq("VALUE");
+    });
+
+    it('should include multiple headers', () => {
+      treetop.request(
+        "POST",
+        "/test",
+        "a=123&b=987",
+        "application/x-www-form-urlencoded",
+        [["x-custom-header", "VALUE"]
+        ,["x-custom-header-2", "VALUE_2"]
+        ]
+      );
+      var req = requests[0];
+      expect(req.requestHeaders["x-custom-header"]).to.eq("VALUE");
+      expect(req.requestHeaders["x-custom-header-2"]).to.eq("VALUE_2");
+    });
+
+    it('should include duplicate headers', () => {
+      treetop.request(
+        "POST",
+        "/test",
+        "a=123&b=987",
+        "application/x-www-form-urlencoded",
+        [["x-custom-header", "VALUE"]
+        ,["x-custom-header", "VALUE_2"]
+        ]
+      );
+      var req = requests[0];
+      expect(req.requestHeaders["x-custom-header"]).to.eq("VALUE, VALUE_2");
+    });
+  });
+
   describe('rejected request', () =>
     it('should have a white list of methods', () =>
       expect(() => treetop.request("NOMETHOD"))

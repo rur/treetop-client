@@ -17,17 +17,18 @@ Notice that no callback mechanism is supported. Response handling is mandated by
 
 ##### Usage
 ```
-treetop.request( [method], [url], [body], [contentType])
+treetop.request([method], [url], [body], [contentType], [headers])
 ```
 
 ##### Arguments:
 
-| Param             | Type    | Details                                          |
-|-------------------|---------|--------------------------------------------------|
-| method            | `String`  | The HTTP request method to use                   |
-| URL               | `String`  | The URL path                                     |
+| Param             | Type                | Details                                |
+|-------------------|---------------------|----------------------------------------|
+| method            | `String`            | The HTTP request method to use         |
+| URL               | `String`            | The URL path                           |
 | body              | (optional) `String` | the encoded request body               |
 | contentType       | (optional) `String` | body encoding type                     |
+| headers           | (optional) `Array<Array<String>>`  | List of header name values pairs |
 
 
 ## treetop.submit

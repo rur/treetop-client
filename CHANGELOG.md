@@ -1,3 +1,9 @@
+## [0.7.1] - 2019-04-05
+
+### Changed
+
+- Add support for custom `headers` in Treetop request API
+
 ## [0.7.0] - 2019-03-21
 
 ### Changed

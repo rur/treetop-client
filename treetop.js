@@ -199,7 +199,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     };
 
     /**
-     * Inserts new node as a sibling after an element aready attache to a parent node.
+     * Inserts new node as a sibling after an element already attache to a parent node.
      * The new node will be mounted.
      *
      * TODO: Needs a test case
@@ -214,7 +214,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             throw new Error("Treetop: Expecting two HTMLElements");
         } else if (!mountedSibling.parentNode) {
             throw new Error(
-                "Treetop: Cannot mount after a silbing node that is not attached to a parent."
+                "Treetop: Cannot mount after a sibling node that is not attached to a parent."
             );
         }
         mountedSibling.parentNode.insertAfter(newSibling, mountedSibling);
@@ -222,7 +222,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     };
 
     /**
-     * Inserts new node as a sibling before an element aready attached to a parent node.
+     * Inserts new node as a sibling before an element already attached to a parent node.
      * The new node will be mounted.
      *
      * TODO: Needs a test case
@@ -237,7 +237,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             throw new Error("Treetop: Expecting two HTMLElements");
         } else if (!mountedSibling.parentNode) {
             throw new Error(
-                "Treetop: Cannot mount before a silbing node that is not attached to a parent."
+                "Treetop: Cannot mount before a sibling node that is not attached to a parent."
             );
         }
         mountedSibling.parentNode.insertBefore(newSibling, mountedSibling);
@@ -291,8 +291,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      * @param  {string} url    The url
      * @param  {string} body   Encoded request body
      * @param  {string} contentType    Encoding of the request body
+     * @param  {array} headers    List of header field-name and field-value pairs
      */
-    Treetop.prototype.request = function (method, url, body, contentType) {
+    Treetop.prototype.request = function (method, url, body, contentType, headers) {
         // make sure an error is raise if initialization happens after the API is used
         initialized = true;
         if (!$.METHODS[method.toUpperCase()]) {
@@ -301,10 +302,15 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
 
         var xhr = $.createXMLHTTPObject();
         if (!xhr) {
-            throw new Error("Treetop: XHR is not supproted by this browser");
+            throw new Error("Treetop: XHR is not supported by this browser");
         }
         var requestID = $.lastRequestID = $.lastRequestID + 1;
         xhr.open(method.toUpperCase(), url, true);
+        if (headers instanceof Array) {
+            for (var i = 0; i < headers.length; i++) {
+                xhr.setRequestHeader(headers[i][0], headers[i][1]);
+            }
+        }
         xhr.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
         if (contentType) {
             xhr.setRequestHeader("content-type", contentType);
@@ -327,7 +333,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             } else if (xhr.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
                 // this response is part of a larger page, add a history entry before processing
                 var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
-                // NOTE: This HTML5 feature will require a polyfill for some browsers
+                // NOTE: This HTML5 feature will require a polyfil for some browsers
                 history.pushState({
                     treetop: true,
                 }, "", responseURL);
@@ -690,7 +696,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     },
 
     /**
-     * Create copy of config object, all keys are tranformed to lowercase.
+     * Create copy of config object, all keys are transformed to lowercase.
      * Non-function type config values will be ignored.
      *
      * @param {object} source Dict {String => Function}
@@ -1042,7 +1048,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
      *
-     * @param  {stirng} sText
+     * @param  {string} sText
      * @return {string}
      */
     function plainEscape(sText) {

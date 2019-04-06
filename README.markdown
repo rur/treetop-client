@@ -16,7 +16,8 @@ treetop.request(
 	"POST",
 	"/example",
 	"a=123&b=987",
-	"application/x-www-form-urlencoded"
+	"application/x-www-form-urlencoded",
+	[["X-Custom-Header", "header_value"]]
 )
 ```
 
