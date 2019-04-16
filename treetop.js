@@ -31,7 +31,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     if (typeof window.HTMLTemplateElement === "undefined") {
         throw Error("Treetop: HTMLTemplateElement not supported, a polyfil should be used");
     }
-    if (!(history && typeof history.pushState === "function")) {
+    if (!$.supportsHistory()) {
         throw Error("Treetop: HTML5 History pushState not supported, a polyfil should be used");
     }
 
@@ -103,12 +103,24 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
         }
 
-        window.onpopstate = function (_evt) {
-            var evt = _evt || window.event;
-            if (evt.state && evt.state.treetop) {
-                $.browserPopState(evt);
+        window.onpopstate = function (evt) {
+            // Taken from https://github.com/ReactTraining/history/blob/master/modules/createBrowserHistory.js
+            var stateFromHistory = (history && history.state) || null;
+            var isPageLoadPopState = (evt.state === null) && !!stateFromHistory;
+
+            // Ignore extraneous popstate events in WebKit.
+            if (isPageLoadPopState || $.isExtraneousPopstateEvent(evt)) {
+                return;
             }
+            if (!history.state || !history.state.treetop) {
+                // not a treetop state, skip
+                return
+            }
+            $.browserPopState(evt);
         };
+
+        // normalize initial history state
+        history.replaceState({treetop: true}, window.document.title, window.location.href)
         $.mount(document.body);
     }
 
@@ -728,6 +740,43 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             throw err;
         });
     },
+
+
+    /**
+     * Returns true if the HTML5 history API is supported. Taken from Modernizr via ReactTraining.
+     *
+     * https://github.com/ReactTraining/history/blob/master/LICENSE
+     * https://github.com/ReactTraining/history/blob/master/modules/DOMUtils.js
+     * https://github.com/Modernizr/Modernizr/blob/master/LICENSE
+     * https://github.com/Modernizr/Modernizr/blob/master/feature-detects/history.js
+     */
+    supportsHistory: function() {
+        var ua = window.navigator.userAgent
+
+        if ((ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) &&
+        ua.indexOf('Mobile Safari') !== -1 &&
+        ua.indexOf('Chrome') === -1 &&
+        ua.indexOf('Windows Phone') === -1
+        ) {
+            return false;
+        }
+        return window.history && 'pushState' in window.history
+    },
+    /**
+     * Taken from ReactTraining history.
+     * https://github.com/ReactTraining/history/blob/master/LICENSE
+     * https://github.com/ReactTraining/history/blob/master/modules/DOMUtils.js
+     *
+     * Returns true if a given popstate event is an extraneous WebKit event.
+     * Accounts for the fact that Chrome on iOS fires real popstate events
+     * containing undefined state when pressing the back button.
+     *
+     */
+    isExtraneousPopstateEvent: function (event) {
+        return event.state === undefined && window.navigator.userAgent.indexOf('CriOS') === -1;
+    }
+
+
 }, (function ($) {
     "use strict";
 

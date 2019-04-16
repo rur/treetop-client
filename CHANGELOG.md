@@ -1,3 +1,12 @@
+## [0.7.2] - 2019-04-15
+
+### Bugfix
+
+- Make a better effort to address issues with how history API is being used.
+- Treetop client should not interfere unnecessarily with other JS code using History API
+- Abuse of try/catch block
+
+
 ## [0.7.1] - 2019-04-05
 
 ### Changed

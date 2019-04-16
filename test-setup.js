@@ -12,6 +12,10 @@ const dom = new jsdom.JSDOM(DEFAULT_HTML, {
 })
 global.document = dom.window.document
 global.window = dom.window
+dom.window.navigator = {
+    userAgent: "mock"
+}
+
 
 // globals
 global.history = dom.window.history
