@@ -1,3 +1,9 @@
+## [0.7.3] - 2019-04-15
+
+### Bugfix
+
+- Just rely on MouseEvent properties when checking for modifier keys, tracking approach has issues.
+
 ## [0.7.2] - 2019-04-15
 
 ### Bugfix

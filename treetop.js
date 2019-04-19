@@ -817,13 +817,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         $.anchorClicked(evt, elm);
     }
 
-    function updateModifiers(_kevt) {
-        var kevt = _kevt || window.event;
-        $.shiftKey =  kevt.shiftKey;
-        $.ctrlKey =  kevt.ctrlKey;
-        $.metaKey =  kevt.metaKey;
-    }
-
     function onSubmit(_evt) {
         if (!_attrEquals(document.body, "treetop-attr", "enabled")) {
             return
@@ -850,13 +843,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             if (el.addEventListener) {
                 el.addEventListener("click", documentClick, false);
                 el.addEventListener("submit", onSubmit, false);
-                el.addEventListener("keydown", updateModifiers, false);
-                el.addEventListener("keyup", updateModifiers, false);
             } else if (el.attachEvent) {
                 el.attachEvent("onclick", documentClick);
                 el.attachEvent("onsubmit", onSubmit);
-                el.attachEvent("onkeydown", updateModifiers);
-                el.attachEvent("onkeyup", updateModifiers);
             } else {
                 throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
@@ -875,12 +864,6 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
     //
     // Body Component internal state
     //
-
-    // track modifier key state
-    shiftKey: false,
-    ctrlKey: false,
-    metaKey: false,
-
     /**
      * document submit event handler
      *
@@ -888,7 +871,10 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     anchorClicked: function (evt, elm) {
         "use strict";
-        if (this.shiftKey || this.ctrlKey || this.metaKey ||
+        // use MouseEvent properties to check for modifiers
+        // if engaged, allow default action to proceed
+        // see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/MouseEvent
+        if (evt.ctrlKey || evt.shiftKey || evt.altKey || evt.metaKey ||
             (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
         ) {
             // Use default browser behavior when a modifier key is pressed
