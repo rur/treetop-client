@@ -43,14 +43,15 @@ treetop.submit(formElement);
 
 ##### Usage
 ```
-treetop.submit( [HTMLFormElement] )
+treetop.submit( [HTMLFormElement], [HTMLElement] )
 ```
 
 ##### Arguments:
 
-| Param    | Type             | Details                                              |
-|----------|------------------|------------------------------------------------------|
-| form     |`HTMLFormElement` | Submit the form as treetop partial request using XHR |
+| Param         | Type                      | Details                                              |
+|---------------|---------------------------|------------------------------------------------------|
+| form          |`HTMLFormElement`          | Submit the form as treetop partial request using XHR |
+| submitter     | (optional) `HTMLElement`  | designate a submitter element which change override form behavior |
 
 
 
@@ -62,6 +63,7 @@ One time initialization of Treetop with configuration which will be stored inter
 window.init({
   treetopAttr: true,
   treetopLinkAttr: true,
+  treetopSubmitAttr: true,
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
@@ -103,6 +105,7 @@ implicitly with a call to any API method.
 | onUnsupported     | `Function`| `null`  | Non-Treetop response error callback, (xhr, url) => {...} |
 | treetopAttr       | `Boolean` | `true`  | treetop attribute component feature flag          |
 | treetopLinkAttr   | `Boolean` | `true`  | treetop-link attribute component feature flag     |
+| treetopSubmitAttr | `Boolean` | `true`  | treetop-submit attribute component feature flag   |
 
 
 ## treetop.config

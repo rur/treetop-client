@@ -98,6 +98,7 @@ Properties supported by Treetop config allow control of build-in components.
 |-------------------|---------|---------|---------------------------------------|
 | treetopAttr       |`boolean`| `true`  | Enable the "treetop" attribute        |
 | treetopLinkAttr   |`boolean`| `true`  | Enable the "treetop-link" attribute   |
+| treetopSubmitAttr |`boolean`| `true`  | Enable the "treetop-submit" attribute   |
 
 ### The "treetop" Attribute
 
@@ -137,6 +138,28 @@ This is similar to the following,
 
     <ANY onclick="treetop.request('GET', '/some/path/')">...</ANY>
 
+
+### The "treetop-submit" Attribute
+
+The `treetop-submit` triggers a treetop submit on a target element with the attached element as the designated submitter. The following 'submitter' attributes are supported:
+
+* form - specify the form to be submitted by node ID (not necessary if the submitter is enclosed)
+* formmethod - override the method of the target form
+* formaction - override the action of the target form
+* formenctype - override the enctype of the target form
+
+If a field name and value are specified on the submitter element, that will be included in the form data.
+
+For example,
+
+    <form>
+        <button treetop-submit formaction="my-action" name="which" value="my-button">My Submit</button>
+    </form>
+
+This is similar to the following,
+
+    treetop.request("GET", "my-action?which=my_button")
+
 ## Custom Merge
 
 When a new fragment is matched to an existing DOM node the default behavior is to replace one with the other, then mount and unmount synchronously. It is possible however, to define a custom 'merge' function which merges the two elements in some way, for example...
@@ -165,6 +188,7 @@ This custom merge implementation will be triggered if both new and old elements 
 
 Backwards compatibility is a priority for the client library. It has been designed to rely on long-supported APIs where possible. However, if broad browser support is important to you, the following modern browser features require a ployfill:
 * `history.pushState`, so that the location can be updated following partial navigation.
+* `FormData`, required for multipart form data to be encoded for XHR.
 * `HTMLTemplateElement`, for reliable decoding of HTML strings.
   * Suggested polyfill library https://github.com/webcomponents/template
 

@@ -13,6 +13,7 @@
 //      The following modern browser APIs are essential. A 'polyfil' must available when necessary.
 //       * `history.pushState` is required so that the location can be updated following partial navigation;
 //       * `HTMLTemplateElement` is required for reliable decoding of HTML strings.
+//       * `FormData` is required if form element must be encoded for XHR
 //
 // Global browser footprint of this script:
 //      * Assigns `window.treetop` with Treetop API instance;
@@ -20,7 +21,7 @@
 //      * Built-in components attach various event listeners when mounted. (Built-ins can be disabled, see docs)
 //
 
-window.treetop = (function ($, BodyComponent, FormSerializer) {
+window.treetop = (function ($, $components) {
     "use strict";
     if (window.treetop !== void 0) {
         // throwing an error here is important since it prevents window.treetop from being reassigned
@@ -41,6 +42,7 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         // Feature flags for built-in component. Note default values.
         var treetopAttr = true;
         var treetopLinkAttr = true;
+        var treetopSubmitAttr = true;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -74,6 +76,9 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             case "treetoplinkattr":
                 treetopLinkAttr = !(config[key] === false);
                 continue;
+            case "treetopsubmitattr":
+                treetopSubmitAttr = !(config[key] === false);
+                continue;
             case "mounttags":
             case "unmounttags":
                 try {
@@ -97,10 +102,13 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         // Notice that conflicting custom components will be clobbered.
         if (treetopAttr) {
             document.body.setAttribute("treetop-attr", "enabled")
-            $.mountAttrs["treetop-attr"] = BodyComponent.bodyMount;
+            $.mountAttrs["treetop-attr"] = $components.bodyMount;
         }
         if (treetopLinkAttr) {
-            $.mountAttrs["treetop-link"] = BodyComponent.linkMount;
+            $.mountAttrs["treetop-link"] = $components.linkMount;
+        }
+        if (treetopSubmitAttr) {
+            $.mountAttrs["treetop-submit"] = $components.submitMount;
         }
 
         window.onpopstate = function (evt) {
@@ -377,15 +385,24 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      *
      * @public
      * @param {HTMLFormElement} formElement Reference to a HTML form element whose state is to be encoded into a treetop request
+     * @param {HTMLElement} submitter Optional element that is capable of adding an input value and overriding form behaviour
      * @throws {Error} If an XHR request cannot derived from the element supplied for any reason.
      */
-    Treetop.prototype.submit = function (formElement) {
-        var api = this;
+    Treetop.prototype.submit = function (formElement, submitter) {
         initialized = true;  // ensure that late arriving configuration will be rejected
-        function dataHandler(method, action, data, enctype) {
-            api.request(method, action, data, enctype);
+        if (typeof formElement.reportValidity === "function") {
+            if (!formElement.reportValidity()) {
+                return
+            }
+        } else if (typeof formElement.checkValidity === "function") {
+            if (!formElement.checkValidity()) {
+                return
+            }
         }
-        new FormSerializer(formElement, dataHandler);
+        var params = $.encodeForm(formElement, submitter);
+        if (params) {
+            window.treetop.request.apply(window.treetop, params);
+        }
     };
 
     Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
@@ -774,10 +791,97 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
      */
     isExtraneousPopstateEvent: function (event) {
         return event.state === undefined && window.navigator.userAgent.indexOf('CriOS') === -1;
+    },
+
+    /**
+     * Convert a form element into parameters for treetop.request API method
+     *
+     * @param {FormElement} formElement Required, valid HTML form element with state to be used for treetop request
+     * @param {HTMLElement} submitter Optional element designated as the form 'submitter'
+     * @returns Array parameters for treetop request method
+     * @throws Error if the target form cannot be encoded for any reason
+     */
+    encodeForm: function(formElement, submitter) {
+        var method = submitter && submitter.hasAttribute("formmethod") ? submitter.getAttribute("formmethod") : formElement.method;
+        var action = submitter && submitter.hasAttribute("formaction") ? submitter.getAttribute("formaction") : formElement.action;
+        var enctype = submitter && submitter.hasAttribute("formenctype") ? submitter.getAttribute("formenctype") : formElement.enctype;
+
+        if (!method) {
+            // default method
+            method = "GET"
+        } else {
+            method = method.toUpperCase();
+        }
+        if (!enctype) {
+            // default encoding
+            enctype = "application\/x-www-form-urlencoded"
+        } else {
+            enctype = enctype.toLowerCase();
+        }
+
+        if (method === "POST" && enctype == "multipart/form-data") {
+            if (typeof window.FormData === "undefined") {
+                throw Error("Treetop: An implementation of FormData is not available. Multipart form data cannot be encoded for XHR.");
+            }
+            // delegate to FormData to handle multipart forms
+            var data = new window.FormData(formElement)
+            if (submitter && submitter.hasAttribute("name")) {
+                data.append(submitter.name, submitter.value);
+            }
+            return ["POST", action, data] // do not include the enctype, that will be supplied by FormData instance
+        }
+
+        // collect form entry list from input elements
+        var segments = [];
+        for (var i = 0, len = formElement.elements.length; i < len; i++) {
+            var inputElement = formElement.elements[i];
+            if (!inputElement.hasAttribute("name")) { continue; }
+            var inputType = inputElement.nodeName.toUpperCase() === "INPUT" ? (inputElement.getAttribute("type") || "").toUpperCase() : "TEXT";
+            if (inputType === "FILE" && inputElement.files.length > 0) {
+                // skip files for urlencoded submit
+                continue
+            } else if ((inputType !== "RADIO" && inputType !== "CHECKBOX") || inputElement.checked) {
+                segments.push([inputElement.name, inputElement.value]);
+            }
+        }
+        if (submitter && submitter.hasAttribute("name")) {
+            segments.push([submitter.name, submitter.value]);
+        }
+        var encodedSegments = segments.map(function (kv) {
+            return encodeURIComponent(kv[0]) + "=" + encodeURIComponent(kv[1]);
+        })
+
+        if (method === "GET") {
+            // put encoded form data into the URL
+            action = action.split("#")[0];  // remove everything after hash, it's not sent anyway
+            var parts = action.split("?");
+            action = parts[0] + "?" + parts.slice(1).concat(encodedSegments).join("&");
+            return ["GET", action, null, enctype];
+        }
+
+        if (enctype === "application/x-www-form-urlencoded"){
+            return [method, action, encodedSegments.join("&"), "application/x-www-form-urlencoded"];
+        }
+        function plainEscape(sText) {
+            return sText.replace(/[\s\=\\]/g, "\\$&");
+        }
+        if (enctype === "text\/plain"){
+            return [
+                method,
+                action,
+                segments.map(function (kv) {
+                    return plainEscape(kv[0]) + "=" + plainEscape(kv[1]);
+                }).join("\r\n"),
+                "text\/plain"
+            ]
+        }
+
+        // fall-through
+        throw Error("Treetop: Cannot submit form as XHR request with method " + method + " and encoding type " + enctype);
     }
 
 
-}, (function ($) {
+}, (function () {
     "use strict";
 
     function _attrEquals(el, attr, expect) {
@@ -814,7 +918,22 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
                 return; // this is not an anchor click
             }
         }
-        $.anchorClicked(evt, elm);
+        // use MouseEvent properties to check for modifiers
+        // if engaged, allow default action to proceed
+        // see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/MouseEvent
+        if (evt.ctrlKey || evt.shiftKey || evt.altKey || evt.metaKey ||
+            (elm.getAttribute("treetop") || "").toLowerCase() === "disabled" ||
+            !elm.hasAttribute("href") || !elm.hasAttribute("treetop")
+        ) {
+            // Use default browser behavior when a modifier key is pressed
+            // or treetop has been explicity disabled
+            return;
+        }
+        // hijack standard link click, extract href of link and
+        // trigger a Treetop XHR request instead
+        evt.preventDefault();
+        window.treetop.request("GET", elm.href);
+        return false;
     }
 
     function onSubmit(_evt) {
@@ -823,7 +942,16 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
         }
         var evt = _evt || window.event;
         var elm = evt.target || evt.srcElement;
-        $.formSubmit(evt, elm);
+        if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
+            evt.preventDefault();
+
+            // Serialize HTML form including file inputs and trigger a treetop request.
+            // The request will be executed asynchronously.
+            // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
+            window.treetop.submit(elm);
+
+            return false;
+        }
     }
 
     function linkClick(_evt) {
@@ -833,6 +961,50 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             var href = elm.getAttribute("treetop-link");
             window.treetop.request("GET", href);
         }
+    }
+
+    /**
+     * Click event hander for elements with the 'treetop-submit' attribute.
+     *
+     * treetop-submit designates an element as a submitter.
+     * Hence, when the element is clicked the state of the targeted form
+     * will be used to trigger a Treetop XHR request.
+     *
+     * Explicit or implicit behavior declared on the form element can be overridden
+     * by the designated submitter, using the "formaction" attribute for example.
+     *
+     * The "form" attribute is also supported where the target form does not enclose the submitter.
+     */
+    function submitClick(_evt) {
+        var evt = _evt || window.event;
+        var elm = evt.currentTarget;
+        if (elm && elm.hasAttribute("treetop-submit") && elm.getAttribute("treetop-submit") !== "disabled") {
+            if (elm.hasAttribute("form")) {
+                var formID = elm.getAttribute("form");
+                if (!formID) {
+                    return;
+                }
+                var formElm = document.getElementById(formID)
+                if (formElm && formElm.tagName.toUpperCase() === "FORM") {
+                    // pass click target as 'submitter'
+                    window.treetop.submit(formElm, elm)
+                    evt.preventDefault();
+                    return false;
+                }
+            } else {
+                var cursor = elm;
+                while (cursor.parentNode) {
+                    if (cursor.parentNode.tagName.toUpperCase() === "FORM") {
+                        // pass click target as 'submitter'
+                        window.treetop.submit(formElm, elm);
+                        evt.preventDefault();
+                        return false;
+                    }
+                    cursor = elm.parentNode;
+                }
+            }
+        }
+        // fall-through, default click behaviour not prevented
     }
 
     /**
@@ -858,250 +1030,16 @@ window.treetop = (function ($, BodyComponent, FormSerializer) {
             } else {
                 throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
-        }
-    };
-}({
-    //
-    // Body Component internal state
-    //
-    /**
-     * document submit event handler
-     *
-     * @param {Event} evt
-     */
-    anchorClicked: function (evt, elm) {
-        "use strict";
-        // use MouseEvent properties to check for modifiers
-        // if engaged, allow default action to proceed
-        // see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/MouseEvent
-        if (evt.ctrlKey || evt.shiftKey || evt.altKey || evt.metaKey ||
-            (elm.getAttribute("treetop") || "").toLowerCase() === "disabled"
-        ) {
-            // Use default browser behavior when a modifier key is pressed
-            // or treetop has been explicity disabled
-            return;
-        }
-        if (elm.href && elm.hasAttribute("treetop")) {
-            // hijack standard link click, extract href of link and
-            // trigger a Treetop XHR request instead
-            evt.preventDefault();
-            window.treetop.request("GET", elm.href);
-            return false;
-        }
-    },
-
-    /**
-     * document submit event handler
-     *
-     * @param {Event} evt
-     */
-    formSubmit: function (evt, elm) {
-        "use strict";
-        if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
-            evt.preventDefault();
-
-            // Serialize HTML form including file inputs and trigger a treetop request.
-            // The request will be executed asynchronously.
-            // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
-            window.treetop.submit(elm);
-
-            return false;
-        }
-    },
-
-})),
-/**
- * FormSerializer library is used to convert HTML Form data for use in XMLHTTPRequests
- */
-(function () {
-    "use strict";
-    /**
-     * techniques:
-     */
-    var URLEN_GET = 0;   // GET method
-    var URLEN_POST = 1;  // POST method, enctype is application/x-www-form-urlencoded (default)
-    var PLAIN_POST = 2;  // POST method, enctype is text/plain
-    var MULTI_POST = 3;  // POST method, enctype is multipart/form-data
-
-    /**
-     * @private
-     * @constructor
-     * @param {FormElement}   elm       The form to be serialized
-     * @param {Function}      callback  Called when the serialization is complete (may be sync or async)
-     */
-    function FormSerializer(elm, callback) {
-        if (!(this instanceof FormSerializer)) {
-            return new FormSerializer(elm, callback);
-        }
-
-        var nFile, sFieldType, oField, oSegmReq, oFile;
-        var bIsPost = elm.method.toLowerCase() === "post";
-        var fFilter = window.encodeURIComponent;
-
-        this.onRequestReady = callback;
-        this.receiver = elm.action;
-        this.status = 0;
-        this.segments = [];
-
-        if (bIsPost) {
-            this.contentType = elm.enctype ? elm.enctype : "application\/x-www-form-urlencoded";
-            switch (this.contentType) {
-            case "multipart\/form-data":
-                this.technique = MULTI_POST;
-
-                try {
-                    // ...to let FormData do all the work
-                    this.data = new window.FormData(elm);
-                    if (this.data) {
-                        this.processStatus();
-                        return;
-                    }
-                } catch (_) {
-                    "pass";
-                }
-
-                break;
-
-            case "text\/plain":
-                this.technique = PLAIN_POST;
-                fFilter = plainEscape;
-                break;
-
-            default:
-                this.technique = URLEN_POST;
-            }
-        } else {
-            this.technique = URLEN_GET;
-        }
-
-        for (var i = 0, len = elm.elements.length; i < len; i++) {
-            oField = elm.elements[i];
-            if (!oField.hasAttribute("name")) { continue; }
-            sFieldType = oField.nodeName.toUpperCase() === "INPUT" ? (oField.getAttribute("type") || "").toUpperCase() : "TEXT";
-            if (sFieldType === "FILE" && oField.files.length > 0) {
-                if (this.technique === MULTI_POST) {
-                    if (!window.FileReader) {
-                        throw new Error("Operation not supported: cannot upload a document via AJAX if FileReader is not supported");
-                    }
-                    /* enctype is multipart/form-data */
-                    for (nFile = 0; nFile < oField.files.length; nFile++) {
-                        oFile = oField.files[nFile];
-                        oSegmReq = new window.FileReader();
-                        oSegmReq.onload = this.fileReadHandler(oField, oFile);
-                        oSegmReq.readAsBinaryString(oFile);
-                    }
-                } else {
-                    /* enctype is application/x-www-form-urlencoded or text/plain or method is GET: files will not be sent! */
-                    for (nFile = 0; nFile < oField.files.length; this.segments.push(fFilter(oField.name) + "=" + fFilter(oField.files[nFile++].name)));
-                }
-            } else if ((sFieldType !== "RADIO" && sFieldType !== "CHECKBOX") || oField.checked) {
-                /* field type is not FILE or is FILE but is empty */
-                this.segments.push(
-                    this.technique === MULTI_POST ? /* enctype is multipart/form-data */
-                        "Content-Disposition: form-data; name=\"" + oField.name + "\"\r\n\r\n" + oField.value + "\r\n"
-                    : /* enctype is application/x-www-form-urlencoded or text/plain or method is GET */
-                        fFilter(oField.name) + "=" + fFilter(oField.value)
-                );
-            }
-        }
-        this.processStatus();
-    }
-
-    /**
-     * Create FileReader onload handler
-     *
-     * @return {function}
-     */
-    FormSerializer.prototype.fileReadHandler = function (field, file) {
-        var self = this;
-        var index = self.segments.length;
-        self.segments.push(
-            "Content-Disposition: form-data; name=\"" + field.name + "\"; " +
-            "filename=\""+ file.name + "\"\r\n" +
-            "Content-Type: " + file.type + "\r\n\r\n");
-        self.status++;
-        return function (oFREvt) {
-            self.segments[index] += oFREvt.target.result + "\r\n";
-            self.status--;
-            self.processStatus();
-        };
-    };
-
-    /**
-     * Is called when a pass of serialization has completed.
-     *
-     * It will be called asynchronously if file reading is taking place.
-     */
-    FormSerializer.prototype.processStatus = function () {
-        if (this.status > 0) { return; }
-        /* the form is now totally serialized! prepare the data to be sent to the server... */
-        var sBoundary, method, url, hash, data, enctype;
-
-        switch (this.technique) {
-        case URLEN_GET:
-            method = "GET";
-            url = this.receiver.split("#");
-            hash = url.length > 1 ? "#" + url.splice(1).join("#") : "";  // preserve the hash
-            url = url[0].replace(/(?:\?.*)?$/, this.segments.length > 0 ? "?" + this.segments.join("&") : "") + hash;
-            data = null;
-            enctype = null;
-            break;
-
-        case URLEN_POST:
-        case PLAIN_POST:
-            method = "POST";
-            url = this.receiver;
-            enctype =  this.contentType;
-            data  = this.segments.join(this.technique === PLAIN_POST ? "\r\n" : "&");
-            break;
-
-        case MULTI_POST:
-            method = "POST";
-            url = this.receiver;
-            if (this.data) {
-                // use native FormData multipart data
-                data = this.data;
-                enctype = null;
+        },
+        submitMount: function (el) {
+            if (el.addEventListener) {
+                el.addEventListener("click", submitClick, false);
+            } else if (el.attachEvent) {
+                el.attachEvent("onclick", submitClick);
             } else {
-                // construct serialized multipart data manually
-                sBoundary = "---------------------------" + Date.now().toString(16);
-                enctype = "multipart\/form-data; boundary=" + sBoundary;
-                data = "--" + sBoundary + "\r\n" + this.segments.join("--" + sBoundary + "\r\n") + "--" + sBoundary + "--\r\n";
-                if (window.Uint8Array) {
-                    data = createArrayBuffer(data);
-                }
+                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
-            break;
         }
-        // Since processStatus may or _may not_ be called synchronously, ensure that the callback
-        // is always invoked asynchronously.
-        setTimeout(this.onRequestReady, 0, method, url, data, enctype);
     };
-
-    /**
-     * Used to escape strings for encoding text/plain
-     *
-     * eg. "4\3\7 - Einstein said E=mc2" ----> "4\\3\\7\ -\ Einstein\ said\ E\=mc2"
-     *
-     * @param  {string} sText
-     * @return {string}
-     */
-    function plainEscape(sText) {
-        return sText.replace(/[\s\=\\]/g, "\\$&");
-    }
-
-    /**
-     * @param  {string} str
-     * @return {ArrayBuffer}
-     */
-    function createArrayBuffer(str) {
-        var nBytes = str.length;
-        var ui8Data = new Uint8Array(nBytes);
-        for (var i = 0; i < nBytes; i++) {
-            ui8Data[i] = str.charCodeAt(i) & 0xff;
-        }
-        return ui8Data;
-    }
-
-    return FormSerializer;
-}())));
+}())
+));

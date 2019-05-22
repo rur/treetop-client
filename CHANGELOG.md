@@ -1,3 +1,14 @@
+## [0.7.4] - 2019-05-21
+
+### Changed
+
+- Support optional designated submitter element in `treetop.submit` function
+- Create `treetop-submit` built-in component to allow buttons to override form behavior
+- Check validity of form in `treetop.submit` function
+- Remove fallback implementation of multipart form encoding, require a polyfil instead.
+- Various code clean up
+
+
 ## [0.7.3] - 2019-04-15
 
 ### Bugfix
