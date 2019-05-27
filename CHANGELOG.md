@@ -1,3 +1,14 @@
+## [0.7.5] - 2019-05-27
+
+### Changed
+
+- Rename submit element component from `treetop-submit` to `treetop-submitter`
+- Support `formnovalidate` attribute on submitter component
+
+### Bugfix
+
+- Fix typo in FORM element scan of submit attr component which results in an infinite while loop (◔_◔)
+
 ## [0.7.4] - 2019-05-21
 
 ### Changed
@@ -104,7 +115,7 @@ Change how mounting is done internally. New API for editing DOM nodes which inco
 ## [0.3.0] - 2018-23-07
 ### Changed
 
-- Check for absense of support for essential browser features that might not be available in
+- Check for absence of support for essential browser features that might not be available in
 certain browsers. Throw an error and ask for a polyfill.
 
 #### HTMLTemplateElement, a new API dependency
