@@ -390,15 +390,6 @@ window.treetop = (function ($, $components) {
      */
     Treetop.prototype.submit = function (formElement, submitter) {
         initialized = true;  // ensure that late arriving configuration will be rejected
-        if (typeof formElement.reportValidity === "function") {
-            if (!formElement.reportValidity()) {
-                return
-            }
-        } else if (typeof formElement.checkValidity === "function") {
-            if (!formElement.checkValidity()) {
-                return
-            }
-        }
         var params = $.encodeForm(formElement, submitter);
         if (params) {
             window.treetop.request.apply(window.treetop, params);
@@ -802,9 +793,22 @@ window.treetop = (function ($, $components) {
      * @throws Error if the target form cannot be encoded for any reason
      */
     encodeForm: function(formElement, submitter) {
+        var noValidate = submitter && submitter.hasAttribute("formnovalidate") ? true : formElement.noValidate;
         var method = submitter && submitter.hasAttribute("formmethod") ? submitter.getAttribute("formmethod") : formElement.method;
         var action = submitter && submitter.hasAttribute("formaction") ? submitter.getAttribute("formaction") : formElement.action;
         var enctype = submitter && submitter.hasAttribute("formenctype") ? submitter.getAttribute("formenctype") : formElement.enctype;
+
+        if (!noValidate) {
+            if (typeof formElement.reportValidity === "function") {
+                if (!formElement.reportValidity()) {
+                    return null;
+                }
+            } else if (typeof formElement.checkValidity === "function") {
+                if (!formElement.checkValidity()) {
+                    return null;
+                }
+            }
+        }
 
         if (!method) {
             // default method
@@ -835,7 +839,14 @@ window.treetop = (function ($, $components) {
         var segments = [];
         for (var i = 0, len = formElement.elements.length; i < len; i++) {
             var inputElement = formElement.elements[i];
-            if (!inputElement.hasAttribute("name")) { continue; }
+            if (!inputElement.hasAttribute("name") ||
+                // do not include submit/button element values in the request data
+                // Those values must only be included if they are designated as the 'submitter' (singular)
+                inputElement.nodeName.toUpperCase() === "BUTTON" ||
+                (inputElement.getAttribute("type") || "").toLowerCase() === "submit"
+            ) {
+                continue;
+            }
             var inputType = inputElement.nodeName.toUpperCase() === "INPUT" ? (inputElement.getAttribute("type") || "").toUpperCase() : "TEXT";
             if (inputType === "FILE" && inputElement.files.length > 0) {
                 // skip files for urlencoded submit
@@ -978,30 +989,32 @@ window.treetop = (function ($, $components) {
     function submitClick(_evt) {
         var evt = _evt || window.event;
         var elm = evt.currentTarget;
+        var formElement = null
         if (elm && elm.hasAttribute("treetop-submit") && elm.getAttribute("treetop-submit") !== "disabled") {
             if (elm.hasAttribute("form")) {
                 var formID = elm.getAttribute("form");
                 if (!formID) {
-                    return;
+                    return false;
                 }
-                var formElm = document.getElementById(formID)
-                if (formElm && formElm.tagName.toUpperCase() === "FORM") {
-                    // pass click target as 'submitter'
-                    window.treetop.submit(formElm, elm)
-                    evt.preventDefault();
+                formElement = document.getElementById(formID)
+                if (!formElement || formElement.tagName.toUpperCase() !== "FORM") {
                     return false;
                 }
             } else {
                 var cursor = elm;
                 while (cursor.parentNode) {
                     if (cursor.parentNode.tagName.toUpperCase() === "FORM") {
-                        // pass click target as 'submitter'
-                        window.treetop.submit(formElm, elm);
-                        evt.preventDefault();
-                        return false;
+                        formElement = cursor.parentElement;
+                        break;
                     }
-                    cursor = elm.parentNode;
+                    cursor = cursor.parentNode;
                 }
+            }
+            if (formElement) {
+                // pass click target as 'submitter'
+                window.treetop.submit(formElement, elm)
+                evt.preventDefault();
+                return false;
             }
         }
         // fall-through, default click behaviour not prevented
