@@ -98,7 +98,7 @@ Properties supported by Treetop config allow control of build-in components.
 |-------------------|---------|---------|---------------------------------------|
 | treetopAttr       |`boolean`| `true`  | Enable the "treetop" attribute        |
 | treetopLinkAttr   |`boolean`| `true`  | Enable the "treetop-link" attribute   |
-| treetopSubmitAttr |`boolean`| `true`  | Enable the "treetop-submit" attribute   |
+| treetopSubmitterAttr |`boolean`| `true`  | Enable the "treetop-submitter" attribute   |
 
 ### The "treetop" Attribute
 
@@ -139,21 +139,22 @@ This is similar to the following,
     <ANY onclick="treetop.request('GET', '/some/path/')">...</ANY>
 
 
-### The "treetop-submit" Attribute
+### The "treetop-submitter" Attribute
 
-The `treetop-submit` triggers a treetop submit on a target element with the attached element as the designated submitter. The following 'submitter' attributes are supported:
+The `treetop-submitter` triggers a treetop submit on a target form element with the attached element as the designated submitter. The following 'submitter' attributes are supported:
 
 * form - specify the form to be submitted by node ID (not necessary if the submitter is enclosed)
 * formmethod - override the method of the target form
 * formaction - override the action of the target form
 * formenctype - override the enctype of the target form
+* formnovalidate - override client-side validation when submitting form
 
 If a field name and value are specified on the submitter element, that will be included in the form data.
 
 For example,
 
     <form>
-        <button treetop-submit formaction="my-action" name="which" value="my-button">My Submit</button>
+        <button treetop-submitter formaction="my-action" name="which" value="my-button">My Submit</button>
     </form>
 
 This is similar to the following,

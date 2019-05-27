@@ -63,7 +63,7 @@ One time initialization of Treetop with configuration which will be stored inter
 window.init({
   treetopAttr: true,
   treetopLinkAttr: true,
-  treetopSubmitAttr: true,
+  treetopSubmitterAttr: true,
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
   },
@@ -105,7 +105,7 @@ implicitly with a call to any API method.
 | onUnsupported     | `Function`| `null`  | Non-Treetop response error callback, (xhr, url) => {...} |
 | treetopAttr       | `Boolean` | `true`  | treetop attribute component feature flag          |
 | treetopLinkAttr   | `Boolean` | `true`  | treetop-link attribute component feature flag     |
-| treetopSubmitAttr | `Boolean` | `true`  | treetop-submit attribute component feature flag   |
+| treetopSubmitterAttr | `Boolean` | `true`  | treetop-submit attribute component feature flag   |
 
 
 ## treetop.config
