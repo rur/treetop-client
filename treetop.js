@@ -42,7 +42,7 @@ window.treetop = (function ($, $components) {
         // Feature flags for built-in component. Note default values.
         var treetopAttr = true;
         var treetopLinkAttr = true;
-        var treetopSubmitAttr = true;
+        var treetopSubmitterAttr = true;
 
         for (var key in config) {
             if (!config.hasOwnProperty(key)) {
@@ -76,8 +76,8 @@ window.treetop = (function ($, $components) {
             case "treetoplinkattr":
                 treetopLinkAttr = !(config[key] === false);
                 continue;
-            case "treetopsubmitattr":
-                treetopSubmitAttr = !(config[key] === false);
+            case "treetopsubmitterattr":
+                treetopSubmitterAttr = !(config[key] === false);
                 continue;
             case "mounttags":
             case "unmounttags":
@@ -107,8 +107,8 @@ window.treetop = (function ($, $components) {
         if (treetopLinkAttr) {
             $.mountAttrs["treetop-link"] = $components.linkMount;
         }
-        if (treetopSubmitAttr) {
-            $.mountAttrs["treetop-submit"] = $components.submitMount;
+        if (treetopSubmitterAttr) {
+            $.mountAttrs["treetop-submitter"] = $components.submitterMount;
         }
 
         window.onpopstate = function (evt) {
@@ -975,9 +975,9 @@ window.treetop = (function ($, $components) {
     }
 
     /**
-     * Click event hander for elements with the 'treetop-submit' attribute.
+     * Click event hander for elements with the 'treetop-submitter' attribute.
      *
-     * treetop-submit designates an element as a submitter.
+     * treetop-submitter designates an element as a submitter.
      * Hence, when the element is clicked the state of the targeted form
      * will be used to trigger a Treetop XHR request.
      *
@@ -990,7 +990,7 @@ window.treetop = (function ($, $components) {
         var evt = _evt || window.event;
         var elm = evt.currentTarget;
         var formElement = null
-        if (elm && elm.hasAttribute("treetop-submit") && elm.getAttribute("treetop-submit") !== "disabled") {
+        if (elm && elm.hasAttribute("treetop-submitter") && elm.getAttribute("treetop-submitter") !== "disabled") {
             if (elm.hasAttribute("form")) {
                 var formID = elm.getAttribute("form");
                 if (!formID) {
@@ -1044,7 +1044,7 @@ window.treetop = (function ($, $components) {
                 throw new Error("Treetop Events: Event delegation is not supported in this browser!");
             }
         },
-        submitMount: function (el) {
+        submitterMount: function (el) {
             if (el.addEventListener) {
                 el.addEventListener("click", submitClick, false);
             } else if (el.attachEvent) {
