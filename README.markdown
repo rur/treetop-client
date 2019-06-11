@@ -189,6 +189,7 @@ This custom merge implementation will be triggered if both new and old elements 
 
 Backwards compatibility is a priority for the client library. It has been designed to rely on long-supported APIs where possible. However, if broad browser support is important to you, the following modern browser features require a ployfill:
 * `history.pushState`, so that the location can be updated following partial navigation.
+* `history.replaceState`, to support Treetop 'X-Response-History' header, fallback to pushState.
 * `FormData`, required for multipart form data to be encoded for XHR.
 * `HTMLTemplateElement`, for reliable decoding of HTML strings.
   * Suggested polyfill library https://github.com/webcomponents/template
