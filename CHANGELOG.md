@@ -1,3 +1,9 @@
+## [0.7.6] - 2019-06-11
+
+### Changed
+
+- Add support for 'X-Response-History' response header using `history.replaceState`
+
 ## [0.7.5] - 2019-05-27
 
 ### Changed
