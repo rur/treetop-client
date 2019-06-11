@@ -353,10 +353,22 @@ window.treetop = (function ($, $components) {
             } else if (xhr.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
                 // this response is part of a larger page, add a history entry before processing
                 var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
+                var responseHistory = xhr.getResponseHeader("x-response-history");
                 // NOTE: This HTML5 feature will require a polyfil for some browsers
-                history.pushState({
-                    treetop: true,
-                }, "", responseURL);
+                if (typeof responseHistory === "string"
+                    && responseHistory.toLowerCase() === "replace"
+                    && typeof history.replaceState === "function"
+                ) {
+                    // update the current history with a new URL
+                    history.replaceState({
+                        treetop: true,
+                    }, "", responseURL);
+                } else {
+                    // add a new history entry using response URL
+                    history.pushState({
+                        treetop: true,
+                    }, "", responseURL);
+                }
                 $.xhrProcess(xhr, requestID, true);
 
             } else if(xhr.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
