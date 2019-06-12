@@ -1,3 +1,9 @@
+## [0.7.7] - 2019-06-12
+
+### Bugfix
+
+- Use `Node.parentElement` for DOM traversal to avoid non-element nodes.
+
 ## [0.7.6] - 2019-06-11
 
 ### Changed
