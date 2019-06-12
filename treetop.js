@@ -191,7 +191,7 @@ window.treetop = (function ($, $components) {
         initialized = true;
         if (!next || !prev) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!prev.parentNode) {
+        } else if (!prev.parentElement) {
             throw new Error(
                 "Treetop: Cannot update an element that is not attached to the DOM"
             );
@@ -232,12 +232,12 @@ window.treetop = (function ($, $components) {
     Treetop.prototype.mountAfter = function(newSibling, mountedSibling) {
         if (!newSibling || !mountedSibling) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!mountedSibling.parentNode) {
+        } else if (!mountedSibling.parentElement) {
             throw new Error(
                 "Treetop: Cannot mount after a sibling node that is not attached to a parent."
             );
         }
-        mountedSibling.parentNode.insertAfter(newSibling, mountedSibling);
+        mountedSibling.parentElement.insertAfter(newSibling, mountedSibling);
         $.mount(newSibling);
     };
 
@@ -255,12 +255,12 @@ window.treetop = (function ($, $components) {
     Treetop.prototype.mountBefore = function(newSibling, mountedSibling) {
         if (!newSibling || !mountedSibling) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!mountedSibling.parentNode) {
+        } else if (!mountedSibling.parentElement) {
             throw new Error(
                 "Treetop: Cannot mount before a sibling node that is not attached to a parent."
             );
         }
-        mountedSibling.parentNode.insertBefore(newSibling, mountedSibling);
+        mountedSibling.parentElement.insertBefore(newSibling, mountedSibling);
         $.mount(newSibling);
     };
 
@@ -274,12 +274,12 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided is not attached to a parent node
      */
     Treetop.prototype.unmount = function(mountedElement) {
-        if (!mountedElement.parentNode) {
+        if (!mountedElement.parentElement) {
             throw new Error(
                 "Treetop: Cannot unmount a node that is not attached to a parent."
             );
         }
-        mountedElement.parentNode.removeChild(mountedElement);
+        mountedElement.parentElement.removeChild(mountedElement);
         $.unmount(mountedElement);
     };
 
@@ -585,8 +585,8 @@ window.treetop = (function ($, $components) {
         } else if (node.id && "#" + node.id in this.updates) {
             updatedID = this.updates["#" + node.id];
         }
-        if (node.parentNode) {
-            parentUpdate = this.getLastUpdate(node.parentNode);
+        if (node.parentElement) {
+            parentUpdate = this.getLastUpdate(node.parentElement);
             if (parentUpdate > updatedID) {
                 return parentUpdate;
             }
@@ -603,7 +603,7 @@ window.treetop = (function ($, $components) {
      */
     defaultComposition: function(next, prev) {
         this.unmount(prev);
-        prev.parentNode.replaceChild(next, prev);
+        prev.parentElement.replaceChild(next, prev);
         this.mount(next);
     },
 
@@ -1014,12 +1014,12 @@ window.treetop = (function ($, $components) {
                 }
             } else {
                 var cursor = elm;
-                while (cursor.parentNode) {
-                    if (cursor.parentNode.tagName.toUpperCase() === "FORM") {
+                while (cursor.parentElement) {
+                    if (cursor.parentElement.tagName.toUpperCase() === "FORM") {
                         formElement = cursor.parentElement;
                         break;
                     }
-                    cursor = cursor.parentNode;
+                    cursor = cursor.parentElement;
                 }
             }
             if (formElement) {
