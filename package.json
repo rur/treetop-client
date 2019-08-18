@@ -4,12 +4,16 @@
   "description": "Browser client library for Treetop enabled web application",
   "main": "treetop.js",
   "scripts": {
-    "test": "mocha --require ./test-setup.js ./treetop.js ./treetop.spec.js",
+    "test": "karma start --single-run --browsers ChromeHeadless karma.conf.js",
     "autotest": "mocha --watch ./test-setup.js ./treetop.js ./treetop.spec.js"
   },
   "devDependencies": {
     "chai": "^4.2.0",
-    "jsdom": "^11.12.0",
+    "karma": "^4.2.0",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-mocha": "^1.3.0",
+    "karma-sinon": "^1.0.5",
     "mocha": "^5.2.0",
     "sinon": "^6.3.5"
   },
