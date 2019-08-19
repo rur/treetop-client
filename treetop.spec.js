@@ -197,7 +197,24 @@ describe('Treetop', () => {
         '<form id="test"><p>OK!</p><input name="tagName"/></form>'
       );
       window.flushTimers()
-      expect(document.getElementById("test").textContent).to.equal("something!");
+      expect(document.getElementById("test").textContent).to.equal("OK!");
+    });
+
+    it('replace child of a form element when properties are shadowed', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<form id="test"><p>FIRST!</p><input name="parentElement"/></form>'
+      );
+      window.flushTimers()
+      treetop.request("GET", "/test");
+      requests[1].respond(
+        200,
+        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        '<form id="test"><p>SECOND!</p><input name="othername"/></form>'
+      );
+      expect(document.getElementById("test").textContent).to.equal("SECOND!");
     });
   });
 
