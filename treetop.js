@@ -861,7 +861,7 @@ window.treetop = (function ($) {
         if (typeof window.FormData === "undefined") {
             throw Error("Treetop: An implementation of FormData is not available. Form cannot be encoded for XHR.");
         }
-        var data = new window.FormData(formElement)
+        var data = new window.FormData(form.element)
         if (!submitter.notAnElement() && submitter.getAttribute("name")) {
             // if a submitter element was supplied adopt that element as an input
             // regardless of the element type. If it has a non-empty "name" attribute
@@ -1015,28 +1015,28 @@ window.treetop = (function ($) {
         var evt = _evt || window.event;
         var target = this.wrapElement(evt.currentTarget);
         if (target.notAnElement()) return
-        var formElement = new this.ElementWrapper(null);
+        var form = null;
         if (target.hasAttribute("treetop-submitter") && target.getAttribute("treetop-submitter") !== "disabled") {
             if (target.hasAttribute("form")) {
                 var formID = target.getAttribute("form");
                 if (!formID) {
                     return false;
                 }
-                formElement.element = document.getElementById(formID);
+                form = document.getElementById(formID);
             } else {
                 // scan up DOM lineage for an enclosing form element
                 var cursor = target;
                 while (!cursor.notAnElement()) {
                     if (cursor.element instanceof HTMLFormElement) {
-                        formElement.element = cursor.element;
+                        form = cursor.element;
                         break;
                     }
                     cursor = cursor.parentElement();
                 }
             }
-            if (!(formElement.element instanceof HTMLFormElement)) return false;
+            if (!(form instanceof HTMLFormElement)) return false;
             // pass click target as 'submitter'
-            window.treetop.submit(formElement.element, target.element)
+            window.treetop.submit(form, target.element)
             evt.preventDefault();
             return false;
         }
