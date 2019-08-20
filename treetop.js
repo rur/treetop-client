@@ -1,4 +1,4 @@
-/* global window, document, XMLHttpRequest, ActiveXObject, history, setTimeout, Uint8Array */
+/* global window, document, XMLHttpRequest, ActiveXObject, history, setTimeout, URLSearchParams */
 
 // Web browser client API for [Treetop request library](https://github.com/rur/treetop).
 //
@@ -13,7 +13,7 @@
 //      The following modern browser APIs are essential. A 'polyfil' must available when necessary.
 //       * `history.pushState` is required so that the location can be updated following partial navigation;
 //       * `HTMLTemplateElement` is required for reliable decoding of HTML strings.
-//       * `FormData` is required if form element must be encoded for XHR
+//       * `FormData` and `URLSearchParams` are required to use the built-in form element encoding for XHR
 //
 // Global browser footprint of this script:
 //      * Assigns `window.treetop` with Treetop API instance;
@@ -21,7 +21,7 @@
 //      * Built-in components attach various event listeners when mounted. (Built-ins can be disabled, see docs)
 //
 
-window.treetop = (function ($, $components) {
+window.treetop = (function ($) {
     "use strict";
     if (window.treetop !== void 0) {
         // throwing an error here is important since it prevents window.treetop from being reassigned
@@ -102,13 +102,13 @@ window.treetop = (function ($, $components) {
         // Notice that conflicting custom components will be clobbered.
         if (treetopAttr) {
             document.body.setAttribute("treetop-attr", "enabled")
-            $.mountAttrs["treetop-attr"] = $components.bodyMount;
+            $.mountAttrs["treetop-attr"] = $.bind($.bodyMount, $);
         }
         if (treetopLinkAttr) {
-            $.mountAttrs["treetop-link"] = $components.linkMount;
+            $.mountAttrs["treetop-link"] = $.bind($.linkMount, $);
         }
         if (treetopSubmitterAttr) {
-            $.mountAttrs["treetop-submitter"] = $components.submitterMount;
+            $.mountAttrs["treetop-submitter"] = $.bind($.submitterMount, $);
         }
 
         window.onpopstate = function (evt) {
@@ -129,7 +129,7 @@ window.treetop = (function ($, $components) {
 
         // normalize initial history state
         history.replaceState({treetop: true}, window.document.title, window.location.href)
-        $.mount(document.body);
+        $.traverseApply($.wrapElement(document.body), $.mountAttrs);
     }
 
     /**
@@ -187,16 +187,19 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.updateElement = function (next, prev) {
+        var _next = $.wrapElement(next)
+        var _prev = $.wrapElement(prev)
         // make sure an error is raise if initialization happens after the API is used
         initialized = true;
-        if (!next || !prev) {
+        if (_next.notAnElement() || _prev.notAnElement()) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!prev.parentElement) {
+        }
+        if (_prev.parentElement().notAnElement()) {
             throw new Error(
                 "Treetop: Cannot update an element that is not attached to the DOM"
             );
         }
-        $.updateElement(next, prev);
+        $.updateElement(_next, _prev);
     };
 
 
@@ -211,11 +214,13 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountChild = function(child, mountedParent) {
-        if (!child || !mountedParent) {
+        var _child = $.wrapElement(child)
+        var _mounted = $.wrapElement(mountedParent)
+        if (_child.notAnElement() || _mounted.notAnElement()) {
             throw new Error("Treetop: Expecting two HTMLElements");
         }
-        mountedParent.appendChild(child);
-        $.mount(child);
+        _mounted.appendChild(child);
+        $.traverseApply(_child, $.mountAttrs);
     };
 
     /**
@@ -230,15 +235,19 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountAfter = function(newSibling, mountedSibling) {
-        if (!newSibling || !mountedSibling) {
+        var _newSibling = $.wrapElement(newSibling)
+        var _mountedSibling = $.wrapElement(mountedSibling)
+        if (_newSibling.notAnElement() || _mountedSibling.notAnElement()) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!mountedSibling.parentElement) {
+        }
+        var parent = mountedSibling.parentElement();
+        if (!parent.notAnElement()) {
             throw new Error(
                 "Treetop: Cannot mount after a sibling node that is not attached to a parent."
             );
         }
-        mountedSibling.parentElement.insertAfter(newSibling, mountedSibling);
-        $.mount(newSibling);
+        parent.insertAfter(newSibling, mountedSibling);
+        $.traverseApply(_newSibling, $.mountAttrs);
     };
 
     /**
@@ -253,15 +262,19 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountBefore = function(newSibling, mountedSibling) {
-        if (!newSibling || !mountedSibling) {
+        var _newSibling = $.wrapElement(newSibling)
+        var _mountedSibling = $.wrapElement(mountedSibling)
+        if (_newSibling.notAnElement() || _mountedSibling.notAnElement()) {
             throw new Error("Treetop: Expecting two HTMLElements");
-        } else if (!mountedSibling.parentElement) {
+        }
+        var parent = mountedSibling.parentElement();
+        if (!parent.notAnElement()) {
             throw new Error(
                 "Treetop: Cannot mount before a sibling node that is not attached to a parent."
             );
         }
-        mountedSibling.parentElement.insertBefore(newSibling, mountedSibling);
-        $.mount(newSibling);
+        parent.insertBefore(newSibling, mountedSibling);
+        $.traverseApply(_newSibling, $.mountAttrs);
     };
 
     /**
@@ -274,13 +287,18 @@ window.treetop = (function ($, $components) {
      * @throws Error if the elements provided is not attached to a parent node
      */
     Treetop.prototype.unmount = function(mountedElement) {
-        if (!mountedElement.parentElement) {
+        var _mounted = $.wrapElement(mountedElement)
+        if (_mounted.notAnElement()) {
+            throw new Error("Treetop: Expecting a HTMLElement to umount");
+        }
+        var parent = _mounted.parentElement()
+        if (parent.notAnElement()) {
             throw new Error(
                 "Treetop: Cannot unmount a node that is not attached to a parent."
             );
         }
-        mountedElement.parentElement.removeChild(mountedElement);
-        $.unmount(mountedElement);
+        parent.removeChild(mountedElement);
+        $.traverseApply(_mountedElement, $.unmountAttrs);
     };
 
     /**
@@ -402,9 +420,14 @@ window.treetop = (function ($, $components) {
      */
     Treetop.prototype.submit = function (formElement, submitter) {
         initialized = true;  // ensure that late arriving configuration will be rejected
-        var params = $.encodeForm(formElement, submitter);
+        var params = $.encodeForm($.wrapElement(formElement), $.wrapElement(submitter));
         if (params) {
-            window.treetop.request.apply(window.treetop, params);
+            window.treetop.request(
+                params["method"],
+                params["action"],
+                params["data"],
+                params["enctype"]
+            );
         }
     };
 
@@ -486,6 +509,7 @@ window.treetop = (function ($, $components) {
     COMPLETE: "treetopcomplete",
 
     startRequest: function () {
+        "use strict";
         this.activeCount++;
         if (this.activeCount === 1) {
             var event = document.createEvent("Event");
@@ -495,6 +519,7 @@ window.treetop = (function ($, $components) {
     },
 
     endRequest: function () {
+        "use strict";
         this.activeCount--;
         if (this.activeCount === 0) {
             var event = document.createEvent("Event");
@@ -515,40 +540,46 @@ window.treetop = (function ($, $components) {
      */
     xhrProcess: function (xhr, requestID, isPagePartial) {
         "use strict";
-        var $ = this;
-        var i, len, temp, neu, old, nodes, matches;
-        i = len = temp = neu = old = nodes = matches = undefined;
+        var i, len, tmpl, neu, old, matches, targetID;
 
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
-        temp = document.createElement("template");
-        temp.innerHTML = xhr.responseText;
-        nodes = new Array(temp.content.children.length);
-        for (i = 0, len = temp.content.children.length; i < len; i++) {
-            nodes[i] = temp.content.children[i];
-        }
+        tmpl = document.createElement("template");
+        tmpl.innerHTML = xhr.responseText;
         matches = []
-        for (i = 0, len = nodes.length; i < len; i++) {
-            neu = nodes[i];
-            if ($.SINGLETONS[neu.tagName.toUpperCase()]) {
-                old = document.getElementsByTagName(neu.nodeName)[0];
-            } else if (neu.id) {
-                old = document.getElementById(neu.id);
-            } else {
-                old = null;
+        for (i = 0, len = tmpl.content.children.length; i < len; i++) {
+            neu = this.wrapElement(tmpl.content.children[i]);
+            if (neu.notAnElement()) {
+                continue;
             }
-            // check that an existing node was found, and that this node
-            // has not already been updated by a more recent request
-            if (old && requestID >= $.getLastUpdate(old)) {
+            targetID = neu.id();
+            old = new this.ElementWrapper(null)
+            if (this.SINGLETONS[neu.tagName().toUpperCase()]) {
+                old.element = document.getElementsByTagName(neu.tagName())[0];
+            } else if (targetID) {
+                old.element = document.getElementById(targetID);
+            }
+            if (old.notAnElement()) {
+                // no match was found for this incoming element, do nothing
+                continue;
+            }
+            var oldParent = old.parentElement()
+            if (oldParent.notAnElement()) {
+                // for some strange reason the matched element does not have a parent, do nothing
+                // TODO: consider whether or not this should throw an error
+                continue;
+            }
+            // Check enclosing nodes have not already been updated by a more recent request
+            if (requestID >= this.getLastUpdate(oldParent)) {
                 if (isPagePartial) {
-                    $.updates["BODY"] = requestID;
-                } else if (neu.id) {
-                    $.updates["#" + neu.id] = requestID;
+                    this.updates["BODY"] = requestID;
+                } else if (targetID) {
+                    this.updates["#" + targetID] = requestID;
                 }
-                matches.push(neu, old)
+                matches.push(neu, old);
             }
         }
         for (i = 0; i < matches.length; i += 2) {
-            $.updateElement(matches[i], matches[i+1]);
+            this.updateElement(matches[i], matches[i+1]);
         }
     },
 
@@ -569,52 +600,64 @@ window.treetop = (function ($, $components) {
      * the most recent update requestID for this node and all of its
      * parent nodes.
      *
-     * @param node (HTMLElement)
+     * @param node (ElementWrapper)
      * @returns number: the most recent request ID that either this or one of
      *                  its ancestor nodes were updated
      */
     getLastUpdate: function(node) {
+        "use strict";
+        node.assertElement()
         var updatedID = 0;
-        var parentUpdate = 0;
-        if (node === document.body) {
+        var nodeID = node.id();
+        if (node.element === document.body) {
             if ("BODY" in this.updates) {
                 updatedID = this.updates["BODY"];
             }
             // dont descent further
             return updatedID;
-        } else if (node.id && "#" + node.id in this.updates) {
-            updatedID = this.updates["#" + node.id];
+        } else if (nodeID && "#" + nodeID in this.updates) {
+            updatedID = this.updates["#" + nodeID];
         }
-        if (node.parentElement) {
-            parentUpdate = this.getLastUpdate(node.parentElement);
-            if (parentUpdate > updatedID) {
-                return parentUpdate;
-            }
+        var parent = node.parentElement()
+        if (parent.notAnElement()) {
+            return updatedID;
         }
-        return updatedID;
+        return Math.max(this.getLastUpdate(parent), updatedID)
     },
 
     /**
      * Default treetop merge method. Replace element followed by sync
      * mount of next and unmount of previous elements.
      *
-     * @param  {HTMLElement} next The element recently loaded from the API
-     * @param  {HTMLElement} prev The element currently within the DOM
+     * @param  {Element} next The element recently loaded from the API
+     * @param  {Element} prev The element currently within the DOM
      */
     defaultComposition: function(next, prev) {
-        this.unmount(prev);
-        prev.parentElement.replaceChild(next, prev);
-        this.mount(next);
+        "use strict";
+        var _next = this.wrapElement(next)
+        var _prev = this.wrapElement(prev)
+        _next.assertElement()
+        _prev.assertElement()
+        parent = _prev.parentElement()
+        if (parent.notAnElement()) {
+            // 'prev' is not attached to the DOM
+            return
+        }
+        this.traverseApply(_prev, this.unmountAttrs);
+        parent.replaceChild(next, prev);
+        this.traverseApply(_next, this.mountAttrs);
     },
 
     /**
      * Apply a recently loaded element to an existing one attached to the DOM
      *
-     * @param  {HTMLElement} next The element recently loaded from the API
-     * @param  {HTMLElement} prev The element currently within the DOM
+     * @param  {ElementWrapper} next The element recently loaded from the API
+     * @param  {ElementWrapper} prev The element currently within the DOM
     */
     updateElement: function(next, prev) {
-        var $ = this;
+        "use strict";
+        next.assertElement()
+        prev.assertElement()
         var nextValue = next.getAttribute("treetop-merge");
         var prevValue = prev.getAttribute("treetop-merge");
         if (typeof nextValue === "string" &&
@@ -625,80 +668,47 @@ window.treetop = (function ($, $components) {
             prevValue = prevValue.toLowerCase();
             if (
               nextValue === prevValue &&
-              $.merge.hasOwnProperty(nextValue) &&
-              typeof $.merge[nextValue] === "function"
+              this.merge.hasOwnProperty(nextValue) &&
+              typeof this.merge[nextValue] === "function"
             ) {
                 // all criteria have been met, delegate update to custom merge function.
-                var mergeFn = $.merge[nextValue];
-                mergeFn(next, prev);
+                var mergeFn = this.merge[nextValue];
+                mergeFn(next.element, prev.element);
                 return;
             }
         }
-        $.defaultComposition(next, prev);
+        this.defaultComposition(next.element, prev.element);
     },
 
     /**
-     * Trigger mount on provided element and all children in
-     * depth first order.
+     * Execute function on elements where the element attributes match
+     * a key in supplied hash. Children of head element are traversed in depth first order.
      *
-     * @param  {HTMLElement} el
+     * @param  {ElementWrapper} head subtree root to descend into
+     * @param  {Object} attrFns Functions to apply to elements when the object keys match an attribute name
      */
-    mount: function (el) {
+    traverseApply: function (head, attrFns) {
         "use strict";
-        var $ = this;
-        var i, j, comp, name;
-        if (el.nodeType !== 1) {
-            // this is not an ELEMENT_NODE
-            return;
-        }
-        // depth-first recursion
-        for (i = 0; i < el.children.length; i++) {
-            $.mount(el.children[i]);
-        }
-        // mount attribute components
-        for (j = el.attributes.length - 1; j >= 0; j--) {
-            name = el.attributes[j].name.toLowerCase();
-            if ($.mountAttrs.hasOwnProperty(name)) {
-                comp = $.mountAttrs[name];
-                if (typeof comp === "function") {
-                    try {
-                        comp(el);
-                    } catch (err) {
-                        $.throwErrorAsync(err)
-                    }
-                }
-            }
-        }
-    },
-
-    /**
-     * Trigger unmount on provided element and all children in
-     * depth first order.
-     *
-     * @param  {HTMLElement} el
-     */
-    unmount: function (el) {
-        "use strict";
-        var $ = this;
-        var i, j, comp, name;
-        if (el.nodeType !== 1) {
-            // this is not an ELEMENT_NODE
-            return;
-        }
+        head.assertElement();
+        var i, j, comp, name, child, attrs;
         // depth first recursion
-        for (i = 0; i < el.children.length; i++) {
-            $.unmount(el.children[i]);
+        var children = head.children()
+        for (i = 0; i < children.length; i++) {
+            child = this.wrapElement(children[i]);
+            if (child.notAnElement()) continue
+            this.traverseApply(child, attrFns);
         }
-        // unmount attribute components
-        for (j = el.attributes.length - 1; j >= 0; j--) {
-            name = el.attributes[j].name.toLowerCase();
-            if ($.unmountAttrs.hasOwnProperty(name)) {
-                comp = $.unmountAttrs[name];
+        // scan element attribute names to match a function
+        attrs = head.attributes()
+        for (j = attrs.length - 1; j >= 0; j--) {
+            name = attrs[j].name.toLowerCase();
+            if (attrFns.hasOwnProperty(name)) {
+                comp = attrFns[name];
                 if (typeof comp === "function") {
                     try {
-                        comp(el);
+                        comp(head.element);
                     } catch (err) {
-                        $.throwErrorAsync(err)
+                        this.throwErrorAsync(err)
                     }
                 }
             }
@@ -714,6 +724,7 @@ window.treetop = (function ($, $components) {
     ],
 
     createXMLHTTPObject: function() {
+        "use strict";
         var xmlhttp = false;
         for (var i = 0; i < this.XMLHttpFactories.length; i++) {
             try {
@@ -735,6 +746,7 @@ window.treetop = (function ($, $components) {
      *
      */
     copyConfig: function (source) {
+        "use strict";
         var target = {};
         // snippet from
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Polyfill
@@ -756,6 +768,7 @@ window.treetop = (function ($, $components) {
      * @param {Error} err Error instance to rethrow
      */
     throwErrorAsync: function(err) {
+        "use strict";
         setTimeout(function(){
             throw err;
         });
@@ -771,6 +784,7 @@ window.treetop = (function ($, $components) {
      * https://github.com/Modernizr/Modernizr/blob/master/feature-detects/history.js
      */
     supportsHistory: function() {
+        "use strict";
         var ua = window.navigator.userAgent
 
         if ((ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) &&
@@ -793,33 +807,48 @@ window.treetop = (function ($, $components) {
      *
      */
     isExtraneousPopstateEvent: function (event) {
+        "use strict";
         return event.state === undefined && window.navigator.userAgent.indexOf('CriOS') === -1;
     },
 
     /**
-     * Convert a form element into parameters for treetop.request API method
+     * Convert a form element into parameters for treetop.request API method.
      *
-     * @param {FormElement} formElement Required, valid HTML form element with state to be used for treetop request
-     * @param {HTMLElement} submitter Optional element designated as the form 'submitter'
+     * This is provided as a utility, it relies upon FormData and URLSearchParams APIs for serialization.
+     * If those are not availalble and cannot be polyfilled, this feature is of no use
+     * and the programmer must implement their own brand of request data serialization.
+     *
+     * @param {ElementWrapper} form Required, valid HTML form element with state to be used for treetop request
+     * @param {ElementWrapper} submitter Optional element designated as the form 'submitter'
      * @returns Array parameters for treetop request method
      * @throws Error if the target form cannot be encoded for any reason
      */
-    encodeForm: function(formElement, submitter) {
-        var noValidate = submitter && submitter.hasAttribute("formnovalidate") ? true : formElement.noValidate;
-        var method = submitter && submitter.hasAttribute("formmethod") ? submitter.getAttribute("formmethod") : formElement.method;
-        var action = submitter && submitter.hasAttribute("formaction") ? submitter.getAttribute("formaction") : formElement.action;
-        var enctype = submitter && submitter.hasAttribute("formenctype") ? submitter.getAttribute("formenctype") : formElement.enctype;
-
-        if (!noValidate) {
-            if (typeof formElement.reportValidity === "function") {
-                if (!formElement.reportValidity()) {
-                    return null;
-                }
-            } else if (typeof formElement.checkValidity === "function") {
-                if (!formElement.checkValidity()) {
-                    return null;
-                }
+    encodeForm: function(form, submitter) {
+        "use strict";
+        if (!(form.element instanceof HTMLFormElement)) {
+            throw new Error("Treetop: Expecting HTMLFormElement for encoding, got " + form.element);
+        }
+        var noValidate = form.hasAttribute("noValidate");
+        var method = form.getAttribute("method");
+        var action = form.getAttribute("action");
+        var enctype = form.getAttribute("enctype");
+        if (!submitter.notAnElement()) {
+            if (submitter.hasAttribute("formnovalidate")) {
+                noValidate =  true;
             }
+            if (submitter.hasAttribute("formmethod")) {
+                method = submitter.getAttribute("formmethod");
+            }
+            if (submitter.hasAttribute("formaction")) {
+                action = submitter.getAttribute("formaction");
+            }
+            if (submitter.hasAttribute("formenctype")) {
+                enctype = submitter.getAttribute("formenctype");
+            }
+        }
+        if (!noValidate && !form.nativeFormValidate()) {
+           // native validiation return 'false'
+            return null;
         }
 
         if (!method) {
@@ -828,97 +857,68 @@ window.treetop = (function ($, $components) {
         } else {
             method = method.toUpperCase();
         }
-        if (!enctype) {
-            // default encoding
-            enctype = "application\/x-www-form-urlencoded"
-        } else {
-            enctype = enctype.toLowerCase();
-        }
 
-        if (method === "POST" && enctype == "multipart/form-data") {
-            if (typeof window.FormData === "undefined") {
-                throw Error("Treetop: An implementation of FormData is not available. Multipart form data cannot be encoded for XHR.");
-            }
-            // delegate to FormData to handle multipart forms
-            var data = new window.FormData(formElement)
-            if (submitter && submitter.hasAttribute("name")) {
-                data.append(submitter.name, submitter.value);
-            }
-            return ["POST", action, data] // do not include the enctype, that will be supplied by FormData instance
+        if (typeof window.FormData === "undefined") {
+            throw Error("Treetop: An implementation of FormData is not available. Form cannot be encoded for XHR.");
         }
-
-        // collect form entry list from input elements
-        var segments = [];
-        for (var i = 0, len = formElement.elements.length; i < len; i++) {
-            var inputElement = formElement.elements[i];
-            if (!inputElement.hasAttribute("name") ||
-                // do not include submit/button element values in the request data
-                // Those values must only be included if they are designated as the 'submitter' (singular)
-                inputElement.nodeName.toUpperCase() === "BUTTON" ||
-                (inputElement.getAttribute("type") || "").toLowerCase() === "submit"
-            ) {
-                continue;
-            }
-            var inputType = inputElement.nodeName.toUpperCase() === "INPUT" ? (inputElement.getAttribute("type") || "").toUpperCase() : "TEXT";
-            if (inputType === "FILE" && inputElement.files.length > 0) {
-                // skip files for urlencoded submit
-                continue
-            } else if ((inputType !== "RADIO" && inputType !== "CHECKBOX") || inputElement.checked) {
-                segments.push([inputElement.name, inputElement.value]);
-            }
+        var data = new window.FormData(form.element)
+        if (!submitter.notAnElement() && submitter.getAttribute("name")) {
+            // if a submitter element was supplied adopt that element as an input
+            // regardless of the element type. If it has a non-empty "name" attribute
+            // add "name" and "value" attribute values to the form data
+            data.append(submitter.getAttribute("name"), submitter.getAttribute("value"));
         }
-        if (submitter && submitter.hasAttribute("name")) {
-            segments.push([submitter.name, submitter.value]);
-        }
-        var encodedSegments = segments.map(function (kv) {
-            return encodeURIComponent(kv[0]) + "=" + encodeURIComponent(kv[1]);
-        })
 
         if (method === "GET") {
-            // put encoded form data into the URL
-            action = action.split("#")[0];  // remove everything after hash, it's not sent anyway
-            var parts = action.split("?");
-            action = parts[0] + "?" + parts.slice(1).concat(encodedSegments).join("&");
-            return ["GET", action, null, enctype];
-        }
+            // add form data to the action URL
+            if (typeof window.URLSearchParams === "undefined") {
+                throw Error("Treetop: An implementation of URLSearchParams is not available. Form cannot be encmded for XHR.");
+            }
+            data = (new URLSearchParams(data)).toString()
+            // strip any existing query and hash, this is the behaviour observed on modern browser
+            action = action.split("#")[0].split("?")[0]
+            if (data) {
+                action = action + "?" + data;
+            }
+            data = null; // body is null for GET request
+        } else {
+            if (!enctype) {
+                // default encoding
+                enctype = "application\/x-www-form-urlencoded"
+            } else {
+                enctype = enctype.toLowerCase();
+            }
 
-        if (enctype === "application/x-www-form-urlencoded"){
-            return [method, action, encodedSegments.join("&"), "application/x-www-form-urlencoded"];
-        }
-        function plainEscape(sText) {
-            return sText.replace(/[\s\=\\]/g, "\\$&");
-        }
-        if (enctype === "text\/plain"){
-            return [
-                method,
-                action,
-                segments.map(function (kv) {
-                    return plainEscape(kv[0]) + "=" + plainEscape(kv[1]);
-                }).join("\r\n"),
-                "text\/plain"
-            ]
-        }
+            switch (enctype) {
+                case "application\/x-www-form-urlencoded":
+                    if (typeof window.URLSearchParams === "undefined") {
+                        throw Error("Treetop: An implementation of URLSearchParams is not available. Form cannot be encoded for XHR.");
+                    }
+                    data = (new URLSearchParams(data)).toString();
 
-        // fall-through
-        throw Error("Treetop: Cannot submit form as XHR request with method " + method + " and encoding type " + enctype);
-    }
+                    break;
 
+                case "multipart/form-data":
+                    // this will be set by the FormData instance which will include a form boundary for the encoding
+                    enctype = void 0;
+                    data = data
+                    break;
 
-}, (function () {
-    "use strict";
-
-    function _attrEquals(el, attr, expect) {
-        if (el && typeof el.hasAttribute === "function" && el.hasAttribute(attr)) {
-            var value = el.getAttribute(attr);
-            if (!value && !expect) {
-                return true;
-            } else if (typeof value === "string" && typeof expect === "string") {
-                return value.toLowerCase() === expect.toLowerCase();
+                default:
+                    // fall-through
+                    throw Error("Treetop: Cannot submit form as XHR request with method " + method + " and encoding type " + enctype);
             }
         }
-        return false;
-    }
 
+        return {
+            method: method,
+            action: action,
+            data: data,
+            enctype: enctype
+        }
+    },
+
+    // handlers:
     /**
      * This is the implementation of the 'treetop' attributes what can be used to overload
      * html anchors and form elements. It works by registering event handlers on
@@ -927,18 +927,24 @@ window.treetop = (function ($, $components) {
      * @type {Object} dictionary with 'mount' and 'unmount' function
      *
      */
-    // handlers:
-    function documentClick(_evt) {
-        if (!_attrEquals(document.body, "treetop-attr", "enabled")) {
+    documentClick: function (_evt) {
+        "use strict";
+        if (!this.attrEquals(document.body, "treetop-attr", "enabled")) {
             return
         }
         var evt = _evt || window.event;
-        var elm = evt.target || evt.srcElement;
-        while (elm.tagName.toUpperCase() !== "A") {
-            if (elm.parentElement) {
-                elm = elm.parentElement;
-            } else {
+        var elm = this.wrapElement(evt.target || evt.srcElement);
+        if (elm.notAnElement()) {
+            return;
+        }
+        var parent = null;
+        while (elm.tagName().toUpperCase() !== "A") {
+            var parent = elm.parentElement();
+            if (parent.notAnElement()) {
                 return; // this is not an anchor click
+            } else {
+                // step up to check if enclosing node is an Anchor tag
+                elm = parent;
             }
         }
         // use MouseEvent properties to check for modifiers
@@ -955,36 +961,36 @@ window.treetop = (function ($, $components) {
         // hijack standard link click, extract href of link and
         // trigger a Treetop XHR request instead
         evt.preventDefault();
-        window.treetop.request("GET", elm.href);
+        window.treetop.request("GET", elm.getAttribute("href"));
         return false;
-    }
+    },
 
-    function onSubmit(_evt) {
-        if (!_attrEquals(document.body, "treetop-attr", "enabled")) {
+    onSubmit: function (_evt) {
+        "use strict";
+        if (!this.attrEquals(document.body, "treetop-attr", "enabled")) {
             return
         }
         var evt = _evt || window.event;
-        var elm = evt.target || evt.srcElement;
-        if (elm.action && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
+        var elm = this.wrapElement(evt.target || evt.srcElement);
+        if (!(elm.element instanceof HTMLFormElement)) return;
+        if (elm.action() && elm.hasAttribute("treetop") && elm.getAttribute("treetop").toLowerCase() != "disabled") {
             evt.preventDefault();
-
-            // Serialize HTML form including file inputs and trigger a treetop request.
-            // The request will be executed asynchronously.
-            // TODO: If an error occurs during serialization there should be some logging/recovery mechanism in the API
-            window.treetop.submit(elm);
-
+            // treetop API will serialize the state of the form using FormData and send as a tt request
+            window.treetop.submit(elm.element);
             return false;
         }
-    }
+    },
 
-    function linkClick(_evt) {
+    linkClick: function (_evt) {
+        "use strict";
         var evt = _evt || window.event;
-        var elm = evt.currentTarget;
-        if (elm && elm.hasAttribute("treetop-link")) {
+        var elm = this.wrapElement(evt.currentTarget);
+        if (elm.notAnElement()) return;
+        if (elm.hasAttribute("treetop-link")) {
             var href = elm.getAttribute("treetop-link");
             window.treetop.request("GET", href);
         }
-    }
+    },
 
     /**
      * Click event hander for elements with the 'treetop-submitter' attribute.
@@ -998,73 +1004,286 @@ window.treetop = (function ($, $components) {
      *
      * The "form" attribute is also supported where the target form does not enclose the submitter.
      */
-    function submitClick(_evt) {
+    submitClick: function (_evt) {
+        "use strict";
         var evt = _evt || window.event;
-        var elm = evt.currentTarget;
-        var formElement = null
-        if (elm && elm.hasAttribute("treetop-submitter") && elm.getAttribute("treetop-submitter") !== "disabled") {
-            if (elm.hasAttribute("form")) {
-                var formID = elm.getAttribute("form");
+        var target = this.wrapElement(evt.currentTarget);
+        if (target.notAnElement()) return
+        var form = null;
+        if (target.hasAttribute("treetop-submitter") && target.getAttribute("treetop-submitter") !== "disabled") {
+            if (target.hasAttribute("form")) {
+                var formID = target.getAttribute("form");
                 if (!formID) {
                     return false;
                 }
-                formElement = document.getElementById(formID)
-                if (!formElement || formElement.tagName.toUpperCase() !== "FORM") {
-                    return false;
-                }
+                form = document.getElementById(formID);
             } else {
-                var cursor = elm;
-                while (cursor.parentElement) {
-                    if (cursor.parentElement.tagName.toUpperCase() === "FORM") {
-                        formElement = cursor.parentElement;
+                // scan up DOM lineage for an enclosing form element
+                var cursor = target;
+                while (!cursor.notAnElement()) {
+                    if (cursor.element instanceof HTMLFormElement) {
+                        form = cursor.element;
                         break;
                     }
-                    cursor = cursor.parentElement;
+                    cursor = cursor.parentElement();
                 }
             }
-            if (formElement) {
-                // pass click target as 'submitter'
-                window.treetop.submit(formElement, elm)
-                evt.preventDefault();
-                return false;
-            }
+            if (!(form instanceof HTMLFormElement)) return false;
+            // pass click target as 'submitter'
+            window.treetop.submit(form, target.element)
+            evt.preventDefault();
+            return false;
         }
         // fall-through, default click behaviour not prevented
-    }
+    },
+
+    bodyMount: function (el) {
+        "use strict";
+        var _elmt = this.wrapElement(el);
+        _elmt.addEventListener("click", this.bind(this.documentClick, this), false);
+        _elmt.addEventListener("submit", this.bind(this.onSubmit, this), false);
+    },
+    linkMount: function (el) {
+        "use strict";
+        var _elmt = this.wrapElement(el);
+        _elmt.addEventListener("click", this.bind(this.linkClick, this), false);
+    },
+    submitterMount: function (el) {
+        "use strict";
+        var _elmt = this.wrapElement(el);
+        _elmt.addEventListener("click", this.bind(this.submitClick, this), false);
+    },
 
     /**
-     * treetop event delegation component definition
+     *
+     * @param {Element} el DOM element to test for attribute value
+     * @param {String} attr Attribute name
+     * @param {String} expect value for case insensitive comparison
      */
-    return {
-        bodyMount: function (el) {
-            if (el.addEventListener) {
-                el.addEventListener("click", documentClick, false);
-                el.addEventListener("submit", onSubmit, false);
-            } else if (el.attachEvent) {
-                el.attachEvent("onclick", documentClick);
-                el.attachEvent("onsubmit", onSubmit);
-            } else {
-                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
-            }
-        },
-        linkMount: function (el) {
-            if (el.addEventListener) {
-                el.addEventListener("click", linkClick, false);
-            } else if (el.attachEvent) {
-                el.attachEvent("onclick", linkClick);
-            } else {
-                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
-            }
-        },
-        submitterMount: function (el) {
-            if (el.addEventListener) {
-                el.addEventListener("click", submitClick, false);
-            } else if (el.attachEvent) {
-                el.attachEvent("onclick", submitClick);
-            } else {
-                throw new Error("Treetop Events: Event delegation is not supported in this browser!");
+    attrEquals: function (el, attr, expect) {
+        "use strict";
+        var _elmt = this.wrapElement(el);
+        if (_elmt.notAnElement()) return false;
+        if (_elmt.hasAttribute(attr)) {
+            var value = _elmt.getAttribute(attr);
+            if (!value && !expect) {
+                return true;
+            } else if (typeof value === "string" && typeof expect === "string") {
+                return value.toLowerCase() === expect.toLowerCase();
             }
         }
-    };
-}())
-));
+        return false;
+    },
+
+    /**
+     * Cheap and cheerful bind implementation
+     */
+    bind: function (f, that) {
+        "use strict";
+        return function () {
+            switch (arguments.length) {
+            case 0:
+                return f.call(that)
+            case 1:
+                return f.call(that, arguments[0])
+            case 2:
+                return f.call(that, arguments[0], arguments[1])
+            case 3:
+                return f.call(that, arguments[0], arguments[1], arguments[2])
+            case 4:
+                return f.call(that, arguments[0], arguments[1], arguments[2], arguments[3])
+            }
+            var args = []
+            for (let i = 0; i < arguments.length; i++) {
+                args.push(arguments[i]);
+            }
+            return f.apply(that, args)
+        }
+    },
+
+    /**
+     * As more testing and QC was carried out, there has been an increasing need
+     * for DOM API related shims. Edge cases were starting to clog up the library code
+     * so this wrapper was created to localize all that nastiness.
+     *
+     * This code is for internal use only, hence it can be minimal for the treetop-client use case.
+     * However, I still expect the code to expand as more conditions are factored out and
+     * more issues present themselves during development.
+     *
+     * see https://github.com/rur/treetop-client/issues/5
+     */
+    ElementWrapper: (function() {
+        "use strict";
+        function Wrap(e) {
+            if (e instanceof Wrap) {
+                throw new Error("Treetop: Double wrapped element, " + e)
+            }
+            this.element = e
+        }
+        Wrap.prototype = {
+            // getters
+            // these will throw an error if the underlying element is not defined
+            action: function () {
+                return this.deshadow("action");
+            },
+            checked: function () {
+                return this.deshadow("checked");
+            },
+            children: function () {
+                return this.deshadow("children");
+            },
+            attributes: function () {
+                return this.deshadow("attributes");
+            },
+            elements: function () {
+                return this.deshadow("elements");
+            },
+            id: function () {
+                return this.deshadow("id");
+            },
+            name: function () {
+                return this.deshadow("name");
+            },
+            nodeName: function () {
+                return this.deshadow("nodeName");
+            },
+            parentElement: function () {
+                this.assertElement()
+                if (this.element instanceof window.HTMLFormElement) {
+                    // HTML form element can have their properties shadowed by
+                    // named inputs. Attempt to ensure that the parentElement
+                    // property is telling the truth.
+                    if (!this.element.parentElement) {
+                        return new Wrap(this.element.parentElement);
+                    } else if (!this.element.parentNode) {
+                        return new Wrap(this.element.parentNode);
+                    } else if (this.element.parentElement === this.element.parentNode) {
+                        // this properties cannot have been shadowed by an input since one input element cannot have two different names
+                        return new Wrap(this.element.parentElement);
+                    } else if (Array.prototype.indexOf.call(this.element.parentElement.children, this.element) !== -1) {
+                        // we have proven that this element is a child of the parentElement node.
+                        // likely parentNode was shadowed
+                        return new Wrap(this.element.parentElement);
+                    } else if (Array.prototype.indexOf.call(this.element.parentNode.children, this.element) !== -1) {
+                        // we have proven that this element is a child of the parentNode node.
+                        // likely parentElement was shadowed
+                        return new Wrap(this.element.parentNode);
+                    } else {
+                        // both parentElement and parentNode have been shadowed, all bets are off
+                        throw new Error("Form input names are shadowing the DOM API. Please rename inputs.")
+                    }
+                }
+                return new Wrap(this.element.parentElement);
+            },
+            tagName: function () {
+                return this.deshadow("tagName");
+            },
+            value: function () {
+                return this.deshadow("value");
+            },
+
+            // element methods
+            // these will throw an error if the underlying element is not defined
+            addEventListener: function(event, listener, capture) {
+                this.assertElement()
+                if (EventTarget && EventTarget.prototype.addEventListener instanceof Function) {
+                    return EventTarget.prototype.addEventListener.call(this.element, event, listener, capture)
+                } else if (this.element.__proto__.attachEvent instanceof Function) {
+                    this.element.__proto__.attachEvent.call(this.element, event, listener)
+                } else {
+                    throw new Error("addEventListener is not supported by this user agent")
+                }
+            },
+            appendChild: function( nue) {
+                this.assertElement()
+                return Node.prototype.appendChild.call(this.element, nue)
+            },
+            insertAfter: function( nue, child) {
+                this.assertElement()
+                return Node.prototype.insertAfter.call(this.element, nue, child)
+            },
+            insertBefore: function( nue, child) {
+                this.assertElement()
+                return Node.prototype.insertBefore.call(this.element, nue, child)
+            },
+            removeChild: function( old) {
+                this.assertElement()
+                return Node.prototype.removeChild.call(this.element, old)
+            },
+            replaceChild: function( nue, old) {
+                this.assertElement()
+                return Node.prototype.replaceChild.call(this.element, nue, old)
+            },
+            getAttribute: function( name) {
+                this.assertElement()
+                return Element.prototype.getAttribute.call(this.element, name)
+            },
+            hasAttribute: function( name) {
+                this.assertElement()
+                return Element.prototype.hasAttribute.call(this.element, name)
+            },
+
+            // wrapper specific API
+            notAnElement: function (){
+                return !(this.element instanceof window.Element);
+            },
+            /**
+             * @throws Error: throws assertion error if this is not an element
+             */
+            assertElement: function (){
+                if (this.notAnElement()) {
+                    throw new Error("Assertion error, " + this.element + " is not an element")
+                }
+            },
+            /**
+             * Hack to access element informational properties which might have been shadowed
+             * @throws Error: if wrapped value is not an element
+             */
+            deshadow: function (name) {
+                if (this.element instanceof window.HTMLFormElement) {
+                    if (this.element[name] instanceof window.Element) {
+                        // This hack temporarily removes the input element to obtain
+                        // access to the property.
+                        // NOTE: This is an expensive operation and should be avoided for performance sensitive code.
+                        var input = this.element[name];
+                        var inputParent = input.parentElement; // this is unlikely to be shadowed since <form> is not a valid input
+                        var placeholder = document.createElement("span");
+                        inputParent.replaceChild(placeholder, input)
+                        // access un-shadowed property
+                        var value = this.element[name]
+                        inputParent.replaceChild(input, placeholder)
+                        return value
+                    }
+                }
+                this.assertElement()
+                return this.element[name]
+            },
+            /**
+             * attempt to trigger native form validation and return a boolean flag
+             * to indicate if the form is valid or not. false === invalid
+             * @throws Error: if the element being wrapped is not a HTMLFormElement
+             */
+            nativeFormValidate: function( ) {
+                if (this.element instanceof window.HTMLFormElement) {
+                    if (typeof HTMLFormElement.prototype.reportValidity === "function") {
+                        if (!HTMLFormElement.prototype.reportValidity.call(this.element)) {
+                            return false;
+                        }
+                    } else if (typeof HTMLFormElement.prototype.checkValidity === "function") {
+                        if (!HTMLFormElement.prototype.checkValidity.call(this.element)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    throw new Error("Treetop: Cannot validate " + this.element + ", node is not a HTMLFormElement")
+                }
+                return true
+            }
+        }
+        return Wrap;
+    }()),
+    wrapElement: function(e) {
+        "use strict";
+        return new this.ElementWrapper(e)
+    }
+}));
