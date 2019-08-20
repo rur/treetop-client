@@ -875,16 +875,10 @@ window.treetop = (function ($) {
                 throw Error("Treetop: An implementation of URLSearchParams is not available. Form cannot be encmded for XHR.");
             }
             data = (new URLSearchParams(data)).toString()
-            action = action.split("#")[0] // strip anchor, it wont be sent to the server anyway
-            var offset = action.indexOf("?")
+            // strip any existing query and hash, this is the behaviour observed on modern browser
+            action = action.split("#")[0].split("?")[0]
             if (data) {
-                if (offset === -1) {
-                    action = action + "?" + data;
-                } else if (offset === action.length-1) {
-                    action = action + data
-                } else {
-                    action = action + "&" + data;
-                }
+                action = action + "?" + data;
             }
             data = null; // body is null for GET request
         } else {
