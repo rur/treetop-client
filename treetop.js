@@ -12,7 +12,7 @@
 // Compatibility Caveats
 //      The following modern browser APIs are essential. A 'polyfil' must available when necessary.
 //       * `history.pushState` is required so that the location can be updated following partial navigation;
-//       * `HTMLTemplateElement` is required for reliable decoding of HTML strings. A polyfil is recommended.
+//       * `HTMLTemplateElement` is required for reliable decoding of HTML strings.
 //       * `FormData` and `URLSearchParams` are required to use the built-in form element encoding for XHR
 //
 // Global browser footprint of this script:
@@ -509,6 +509,7 @@ window.treetop = (function ($) {
     COMPLETE: "treetopcomplete",
 
     startRequest: function () {
+        "use strict";
         this.activeCount++;
         if (this.activeCount === 1) {
             var event = document.createEvent("Event");
@@ -518,6 +519,7 @@ window.treetop = (function ($) {
     },
 
     endRequest: function () {
+        "use strict";
         this.activeCount--;
         if (this.activeCount === 0) {
             var event = document.createEvent("Event");
@@ -603,6 +605,7 @@ window.treetop = (function ($) {
      *                  its ancestor nodes were updated
      */
     getLastUpdate: function(node) {
+        "use strict";
         node.assertElement()
         var updatedID = 0;
         var nodeID = node.id();
@@ -630,6 +633,7 @@ window.treetop = (function ($) {
      * @param  {Element} prev The element currently within the DOM
      */
     defaultComposition: function(next, prev) {
+        "use strict";
         var _next = this.wrapElement(next)
         var _prev = this.wrapElement(prev)
         _next.assertElement()
@@ -651,6 +655,7 @@ window.treetop = (function ($) {
      * @param  {ElementWrapper} prev The element currently within the DOM
     */
     updateElement: function(next, prev) {
+        "use strict";
         next.assertElement()
         prev.assertElement()
         var nextValue = next.getAttribute("treetop-merge");
@@ -693,7 +698,7 @@ window.treetop = (function ($) {
             if (child.notAnElement()) continue
             this.traverseApply(child, attrFns);
         }
-        // unmount attribute components
+        // scan element attribute names to match a function
         attrs = head.attributes()
         for (j = attrs.length - 1; j >= 0; j--) {
             name = attrs[j].name.toLowerCase();
@@ -719,6 +724,7 @@ window.treetop = (function ($) {
     ],
 
     createXMLHTTPObject: function() {
+        "use strict";
         var xmlhttp = false;
         for (var i = 0; i < this.XMLHttpFactories.length; i++) {
             try {
@@ -740,6 +746,7 @@ window.treetop = (function ($) {
      *
      */
     copyConfig: function (source) {
+        "use strict";
         var target = {};
         // snippet from
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign#Polyfill
@@ -761,6 +768,7 @@ window.treetop = (function ($) {
      * @param {Error} err Error instance to rethrow
      */
     throwErrorAsync: function(err) {
+        "use strict";
         setTimeout(function(){
             throw err;
         });
@@ -776,6 +784,7 @@ window.treetop = (function ($) {
      * https://github.com/Modernizr/Modernizr/blob/master/feature-detects/history.js
      */
     supportsHistory: function() {
+        "use strict";
         var ua = window.navigator.userAgent
 
         if ((ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) &&
@@ -798,6 +807,7 @@ window.treetop = (function ($) {
      *
      */
     isExtraneousPopstateEvent: function (event) {
+        "use strict";
         return event.state === undefined && window.navigator.userAgent.indexOf('CriOS') === -1;
     },
 
@@ -808,12 +818,13 @@ window.treetop = (function ($) {
      * If those are not availalble and cannot be polyfilled, this feature is of no use
      * and the programmer must implement their own brand of request data serialization.
      *
-     * @param {FormElement} form Required, valid HTML form element with state to be used for treetop request
-     * @param {HTMLElement} submitter Optional element designated as the form 'submitter'
+     * @param {ElementWrapper} form Required, valid HTML form element with state to be used for treetop request
+     * @param {ElementWrapper} submitter Optional element designated as the form 'submitter'
      * @returns Array parameters for treetop request method
      * @throws Error if the target form cannot be encoded for any reason
      */
     encodeForm: function(form, submitter) {
+        "use strict";
         if (!(form.element instanceof HTMLFormElement)) {
             throw new Error("Treetop: Expecting HTMLFormElement for encoding, got " + form.element);
         }
@@ -923,6 +934,7 @@ window.treetop = (function ($) {
      *
      */
     documentClick: function (_evt) {
+        "use strict";
         if (!this.attrEquals(document.body, "treetop-attr", "enabled")) {
             return
         }
@@ -960,6 +972,7 @@ window.treetop = (function ($) {
     },
 
     onSubmit: function (_evt) {
+        "use strict";
         if (!this.attrEquals(document.body, "treetop-attr", "enabled")) {
             return
         }
@@ -975,6 +988,7 @@ window.treetop = (function ($) {
     },
 
     linkClick: function (_evt) {
+        "use strict";
         var evt = _evt || window.event;
         var elm = this.wrapElement(evt.currentTarget);
         if (elm.notAnElement()) return;
@@ -997,6 +1011,7 @@ window.treetop = (function ($) {
      * The "form" attribute is also supported where the target form does not enclose the submitter.
      */
     submitClick: function (_evt) {
+        "use strict";
         var evt = _evt || window.event;
         var target = this.wrapElement(evt.currentTarget);
         if (target.notAnElement()) return
@@ -1029,15 +1044,18 @@ window.treetop = (function ($) {
     },
 
     bodyMount: function (el) {
+        "use strict";
         var _elmt = this.wrapElement(el);
         _elmt.addEventListener("click", this.bind(this.documentClick, this), false);
         _elmt.addEventListener("submit", this.bind(this.onSubmit, this), false);
     },
     linkMount: function (el) {
+        "use strict";
         var _elmt = this.wrapElement(el);
         _elmt.addEventListener("click", this.bind(this.linkClick, this), false);
     },
     submitterMount: function (el) {
+        "use strict";
         var _elmt = this.wrapElement(el);
         _elmt.addEventListener("click", this.bind(this.submitClick, this), false);
     },
@@ -1049,6 +1067,7 @@ window.treetop = (function ($) {
      * @param {String} expect value for case insensitive comparison
      */
     attrEquals: function (el, attr, expect) {
+        "use strict";
         var _elmt = this.wrapElement(el);
         if (_elmt.notAnElement()) return false;
         if (_elmt.hasAttribute(attr)) {
@@ -1066,6 +1085,7 @@ window.treetop = (function ($) {
      * Cheap and cheerful bind implementation
      */
     bind: function (f, that) {
+        "use strict";
         return function () {
             switch (arguments.length) {
             case 0:
@@ -1099,6 +1119,7 @@ window.treetop = (function ($) {
      * see https://github.com/rur/treetop-client/issues/5
      */
     ElementWrapper: (function() {
+        "use strict";
         function Wrap(e) {
             if (e instanceof Wrap) {
                 throw new Error("Treetop: Double wrapped element, " + e)
@@ -1260,7 +1281,7 @@ window.treetop = (function ($) {
                         }
                     }
                 } else {
-                    throw new Error("Cannot validate " + this.element + ", node is not a HTMLFormElement")
+                    throw new Error("Treetop: Cannot validate " + this.element + ", node is not a HTMLFormElement")
                 }
                 return true
             }
@@ -1268,6 +1289,7 @@ window.treetop = (function ($) {
         return Wrap;
     }()),
     wrapElement: function(e) {
+        "use strict";
         return new this.ElementWrapper(e)
     }
 }));

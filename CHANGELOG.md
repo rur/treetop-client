@@ -1,3 +1,17 @@
+## [0.8.0] - 2019-08-19
+
+### Changed
+
+- Replace mock-style test harness with headless browser
+- Use FormData api for both multipart and urlencoded form data serialization to reduce edge cases
+- New dependency on URLSearchParams API for urlencoding form data
+- Make API methods more strict about node types
+- Remove some redundency from the code overall.
+
+### Bugfix
+
+- Address issue with shadowed form element properties breaking DOM dependent code
+
 ## [0.7.7] - 2019-06-12
 
 ### Bugfix
