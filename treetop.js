@@ -420,7 +420,7 @@ window.treetop = (function ($) {
      */
     Treetop.prototype.submit = function (formElement, submitter) {
         initialized = true;  // ensure that late arriving configuration will be rejected
-        var params = $.encodeForm(formElement, submitter);
+        var params = $.encodeForm($.wrapElement(formElement), $.wrapElement(submitter));
         if (params) {
             window.treetop.request(
                 params["method"],
@@ -808,34 +808,34 @@ window.treetop = (function ($) {
      * If those are not availalble and cannot be polyfilled, this feature is of no use
      * and the programmer must implement their own brand of request data serialization.
      *
-     * @param {FormElement} formElement Required, valid HTML form element with state to be used for treetop request
+     * @param {FormElement} form Required, valid HTML form element with state to be used for treetop request
      * @param {HTMLElement} submitter Optional element designated as the form 'submitter'
      * @returns Array parameters for treetop request method
      * @throws Error if the target form cannot be encoded for any reason
      */
-    encodeForm: function(formElement, submitter) {
-        var _form = this.wrapElement(formElement);
-        var _submitter = this.wrapElement(submitter);
-
-        var noValidate = _form.hasAttribute("noValidate");
-        var method = _form.getAttribute("method");
-        var action = _form.getAttribute("action");
-        var enctype = _form.getAttribute("enctype");
-        if (!_submitter.notAnElement()) {
-            if (_submitter.hasAttribute("formnovalidate")) {
+    encodeForm: function(form, submitter) {
+        if (!(form.element instanceof HTMLFormElement)) {
+            throw new Error("Treetop: Expecting HTMLFormElement for encoding, got " + form.element);
+        }
+        var noValidate = form.hasAttribute("noValidate");
+        var method = form.getAttribute("method");
+        var action = form.getAttribute("action");
+        var enctype = form.getAttribute("enctype");
+        if (!submitter.notAnElement()) {
+            if (submitter.hasAttribute("formnovalidate")) {
                 noValidate =  true;
             }
-            if (_submitter.hasAttribute("formmethod")) {
-                method = _submitter.getAttribute("formmethod");
+            if (submitter.hasAttribute("formmethod")) {
+                method = submitter.getAttribute("formmethod");
             }
-            if (_submitter.hasAttribute("formaction")) {
-                action = _submitter.getAttribute("formaction");
+            if (submitter.hasAttribute("formaction")) {
+                action = submitter.getAttribute("formaction");
             }
-            if (_submitter.hasAttribute("formenctype")) {
-                enctype = _submitter.getAttribute("formenctype");
+            if (submitter.hasAttribute("formenctype")) {
+                enctype = submitter.getAttribute("formenctype");
             }
         }
-        if (!noValidate && !_form.nativeFormValidate()) {
+        if (!noValidate && !form.nativeFormValidate()) {
            // native validiation return 'false'
             return null;
         }
@@ -851,17 +851,17 @@ window.treetop = (function ($) {
             throw Error("Treetop: An implementation of FormData is not available. Form cannot be encoded for XHR.");
         }
         var data = new window.FormData(formElement)
-        if (!_submitter.notAnElement() && _submitter.getAttribute("name")) {
+        if (!submitter.notAnElement() && submitter.getAttribute("name")) {
             // if a submitter element was supplied adopt that element as an input
             // regardless of the element type. If it has a non-empty "name" attribute
             // add "name" and "value" attribute values to the form data
-            data.append(_submitter.getAttribute("name"), _submitter.getAttribute("value"));
+            data.append(submitter.getAttribute("name"), submitter.getAttribute("value"));
         }
 
         if (method === "GET") {
             // add form data to the action URL
             if (typeof window.URLSearchParams === "undefined") {
-                throw Error("Treetop: An implementation of URLSearchParams is not available. Form cannot be encoded for XHR.");
+                throw Error("Treetop: An implementation of URLSearchParams is not available. Form cannot be encmded for XHR.");
             }
             data = (new URLSearchParams(data)).toString()
             action = action.split("#")[0] // strip anchor, it wont be sent to the server anyway
@@ -1100,6 +1100,9 @@ window.treetop = (function ($) {
      */
     ElementWrapper: (function() {
         function Wrap(e) {
+            if (e instanceof Wrap) {
+                throw new Error("Treetop: Double wrapped element, " + e)
+            }
             this.element = e
         }
         Wrap.prototype = {
