@@ -175,28 +175,6 @@ treetop.mountChild( [HTMLElement], [HTMLElement] )
 | parentElement      | `HTMLElement` | DOM node act as parent of new node.           |
 
 
-## treetop.mountAfter
-Add a new element as a sibling immediately following a DOM node and mount the new element.
-
-```
-var item2 = document.getElementById("list-item-2");
-var item3 = document.createElement("li");
-treetop.mountAfter(item3, item2)
-```
-
-##### Usage
-```
-treetop.mountAfter( [HTMLElement], [HTMLElement] )
-```
-
-##### Arguments:
-
-| Param             | Type         | Details                                          |
-|-------------------|--------------|--------------------------------------------------|
-| newElement        | `HTMLElement` | newly minted template element to add to the DOM  |
-| siblingElement    | `HTMLElement` | DOM node to act as immediate sibling of new node.|
-
-
 ## treetop.mountBefore
 Add a new element as a sibling immediately before a DOM node and mount the new element.
 

@@ -510,7 +510,7 @@ describe('Treetop', () => {
     });
   });
 
-  describe('treetop.updateElement', () => {
+  describe('treetop.updateElement API method', () => {
     beforeEach(() => {
       sandbox.innerHTML = "";
     });
@@ -547,6 +547,68 @@ describe('Treetop', () => {
       expect(calledWithStrict(unmount, oldElm)).to.be.true;
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, oldElm)).to.be.false;
+    });
+  });
+
+  // treetop.mountChild
+  describe('treetop.mountChild API method', () => {
+    var el
+    beforeEach(() => {
+      sandbox.innerHTML = '<table><tr id="test"><td>First Cell</td></tr></tablen>';
+      el = document.createElement("td");
+      el.textContent = "Second Cell!";
+      el.setAttribute("test", "something");
+      treetop.mountChild(el, document.getElementById("test"));
+    });
+
+    it('should allow a child element to be created outside and mounted normally', () => {
+      expect(document.getElementById("test").textContent).to.equal("First CellSecond Cell!");
+    });
+
+    it('should mount components on the new element', () => {
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+  });
+
+  // treetop.mountBefore
+  describe('treetop.mountBefore API method', () => {
+    var el
+    beforeEach(() => {
+      sandbox.innerHTML = '<table id="mount_test"><tr><td id="test">First Cell</td></tr></tablen>';
+      el = document.createElement("td");
+      el.textContent = "Second Cell!";
+      el.setAttribute("test", "something");
+      var testEl = document.getElementById("test");
+      treetop.mountBefore(el, testEl);
+    });
+
+    it('should allow a child element to be created outside and mounted normally', () => {
+      expect(document.getElementById("mount_test").textContent).to.equal("Second Cell!First Cell");
+    });
+
+    it('should mount components on the new element', () => {
+      var mount = window.treetop.config().mountAttrs["test"];
+      expect(calledWithStrict(mount, el)).to.be.true;
+    });
+  });
+
+  // treetop.unmount
+  describe('treetop.unmount API method', () => {
+    var el
+    beforeEach(() => {
+      sandbox.innerHTML = '<table id="mount_test"><tr><td test id="test">First Cell</td></tr></tablen>';
+      el = document.getElementById("test");
+      treetop.unmount(el);
+    });
+
+    it('should allow a child element to be created outside and mounted normally', () => {
+      expect(document.getElementById("mount_test").textContent).to.equal("");
+    });
+
+    it('should mount components on the new element', () => {
+      var unmount = window.treetop.config().unmountAttrs["test"];
+      expect(calledWithStrict(unmount, el)).to.be.true;
     });
   });
 });
