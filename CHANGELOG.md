@@ -1,3 +1,13 @@
+## [0.8.1] - 2019-10-17
+
+### Changed
+
+- Remove `treetop.mountAfter`, no corresponding DOM method exists, this was a mix-up.
+
+### Bugfix
+
+- DOM component mounting/unmounting API functions were not tested and inevitably did not work!
+
 ## [0.8.0] - 2019-08-19
 
 ### Changed
