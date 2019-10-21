@@ -206,8 +206,6 @@ window.treetop = (function ($) {
     /**
      * Appends a node to a parent and mounts treetop components.
      *
-     * TODO: Needs a test case
-     *
      * @param {HTMLElement} child: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} mountedParent: node currently attached to the DOM
      *
@@ -224,37 +222,8 @@ window.treetop = (function ($) {
     };
 
     /**
-     * Inserts new node as a sibling after an element already attache to a parent node.
-     * The new node will be mounted.
-     *
-     * TODO: Needs a test case
-     *
-     * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
-     * @param {HTMLElement} mountedSibling: node currently attached to the DOM
-     *
-     * @throws Error if the elements provided are not valid in some obvious way
-     */
-    Treetop.prototype.mountAfter = function(newSibling, mountedSibling) {
-        var _newSibling = $.wrapElement(newSibling)
-        var _mountedSibling = $.wrapElement(mountedSibling)
-        if (_newSibling.notAnElement() || _mountedSibling.notAnElement()) {
-            throw new Error("Treetop: Expecting two HTMLElements");
-        }
-        var parent = mountedSibling.parentElement();
-        if (!parent.notAnElement()) {
-            throw new Error(
-                "Treetop: Cannot mount after a sibling node that is not attached to a parent."
-            );
-        }
-        parent.insertAfter(newSibling, mountedSibling);
-        $.traverseApply(_newSibling, $.mountAttrs);
-    };
-
-    /**
      * Inserts new node as a sibling before an element already attached to a parent node.
      * The new node will be mounted.
-     *
-     * TODO: Needs a test case
      *
      * @param {HTMLElement} newSibling: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} mountedSibling: node currently attached to the DOM
@@ -262,25 +231,23 @@ window.treetop = (function ($) {
      * @throws Error if the elements provided are not valid in some obvious way
      */
     Treetop.prototype.mountBefore = function(newSibling, mountedSibling) {
-        var _newSibling = $.wrapElement(newSibling)
-        var _mountedSibling = $.wrapElement(mountedSibling)
-        if (_newSibling.notAnElement() || _mountedSibling.notAnElement()) {
+        var _new = $.wrapElement(newSibling)
+        var _sibling = $.wrapElement(mountedSibling)
+        if (_new.notAnElement() || _sibling.notAnElement()) {
             throw new Error("Treetop: Expecting two HTMLElements");
         }
-        var parent = mountedSibling.parentElement();
-        if (!parent.notAnElement()) {
+        var parent = _sibling.parentElement();
+        if (parent.notAnElement()) {
             throw new Error(
                 "Treetop: Cannot mount before a sibling node that is not attached to a parent."
             );
         }
-        parent.insertBefore(newSibling, mountedSibling);
-        $.traverseApply(_newSibling, $.mountAttrs);
+        parent.insertBefore(_new.element, _sibling.element);
+        $.traverseApply(_new, $.mountAttrs);
     };
 
     /**
      * Removes and un-mounts an element from the DOM
-     *
-     * TODO: Needs a test case
      *
      * @param {HTMLElement} mountedElement: HTMLElement, not attached and mounted to the DOM
      *
@@ -291,14 +258,14 @@ window.treetop = (function ($) {
         if (_mounted.notAnElement()) {
             throw new Error("Treetop: Expecting a HTMLElement to umount");
         }
-        var parent = _mounted.parentElement()
+        var parent = _mounted.parentElement();
         if (parent.notAnElement()) {
             throw new Error(
                 "Treetop: Cannot unmount a node that is not attached to a parent."
             );
         }
-        parent.removeChild(mountedElement);
-        $.traverseApply(_mountedElement, $.unmountAttrs);
+        parent.removeChild(_mounted.element);
+        $.traverseApply(_mounted, $.unmountAttrs);
     };
 
     /**
@@ -1194,31 +1161,27 @@ window.treetop = (function ($) {
                     throw new Error("addEventListener is not supported by this user agent")
                 }
             },
-            appendChild: function( nue) {
+            appendChild: function(nue) {
                 this.assertElement()
                 return Node.prototype.appendChild.call(this.element, nue)
             },
-            insertAfter: function( nue, child) {
-                this.assertElement()
-                return Node.prototype.insertAfter.call(this.element, nue, child)
-            },
-            insertBefore: function( nue, child) {
+            insertBefore: function(nue, child) {
                 this.assertElement()
                 return Node.prototype.insertBefore.call(this.element, nue, child)
             },
-            removeChild: function( old) {
+            removeChild: function(old) {
                 this.assertElement()
                 return Node.prototype.removeChild.call(this.element, old)
             },
-            replaceChild: function( nue, old) {
+            replaceChild: function(nue, old) {
                 this.assertElement()
                 return Node.prototype.replaceChild.call(this.element, nue, old)
             },
-            getAttribute: function( name) {
+            getAttribute: function(name) {
                 this.assertElement()
                 return Element.prototype.getAttribute.call(this.element, name)
             },
-            hasAttribute: function( name) {
+            hasAttribute: function(name) {
                 this.assertElement()
                 return Element.prototype.hasAttribute.call(this.element, name)
             },
