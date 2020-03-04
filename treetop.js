@@ -367,7 +367,7 @@ window.treetop = (function ($) {
                 $.xhrProcess(xhr, requestID, pageURL !== null);
                 return
             }
-            
+
             if(typeof $.onUnsupported === "function") {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.

@@ -156,6 +156,28 @@ describe('Treetop', () => {
       expect(document.getElementById("test").textContent).to.equal("after!");
     });
 
+    it('should handle utf-8 encoded string', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">🕺!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("🕺!");
+    });
+
+    it('should handle a string with html entities encoding for unicode characters', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">&#x1F57A!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("🕺!");
+    });
+
     it('should work without template tags', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
