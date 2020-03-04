@@ -316,7 +316,7 @@ window.treetop = (function ($) {
                 xhr.setRequestHeader(headers[i][0], headers[i][1]);
             }
         }
-        xhr.setRequestHeader("accept", [$.PARTIAL_CONTENT_TYPE, $.FRAGMENT_CONTENT_TYPE].join(", "));
+        xhr.setRequestHeader("accept", $.TEMPLATE_CONTENT_TYPE);
         if (contentType) {
             xhr.setRequestHeader("content-type", contentType);
         }
@@ -331,36 +331,44 @@ window.treetop = (function ($) {
             }
             // check if the response can be processed by treetop client library,
             // otherwise trigger 'onUnsupported' signal
-            if (xhr.getResponseHeader("x-treetop-see-other") !== null) {
-                // Redirect browser window
-                window.location = xhr.getResponseHeader("x-treetop-see-other");
-
-            } else if (xhr.getResponseHeader("content-type") === $.PARTIAL_CONTENT_TYPE) {
-                // this response is part of a larger page, add a history entry before processing
-                var responseURL = xhr.getResponseHeader("x-response-url") || xhr.responseURL;
-                var responseHistory = xhr.getResponseHeader("x-response-history");
-                // NOTE: This HTML5 feature will require a polyfil for some browsers
-                if (typeof responseHistory === "string"
-                    && responseHistory.toLowerCase() === "replace"
-                    && typeof history.replaceState === "function"
-                ) {
-                    // update the current history with a new URL
-                    history.replaceState({
-                        treetop: true,
-                    }, "", responseURL);
-                } else {
-                    // add a new history entry using response URL
-                    history.pushState({
-                        treetop: true,
-                    }, "", responseURL);
+            if (xhr.getResponseHeader("x-treetop-redirect") === "SeeOther") {
+                // force browser redirect to Location header value
+                // if it is defined, otherwise do nothing
+                var location = xhr.getResponseHeader("Location")
+                if (location !== null) {
+                    // Redirect browser window
+                    window.location = location;
                 }
-                $.xhrProcess(xhr, requestID, true);
+                return
+            }
 
-            } else if(xhr.getResponseHeader("content-type") === $.FRAGMENT_CONTENT_TYPE) {
-                // this is a fragment response, just process the update
-                $.xhrProcess(xhr, requestID, false);
-
-            } else if(typeof $.onUnsupported === "function") {
+            if(xhr.getResponseHeader("content-type") === $.TEMPLATE_CONTENT_TYPE) {
+                var pageURL = xhr.getResponseHeader("X-Page-URL")
+                if (pageURL !== null) {
+                    // this response is part of a larger page, add a history entry before processing
+                    var responseURL = pageURL;
+                    var responseHistory = xhr.getResponseHeader("x-response-history");
+                    // NOTE: This HTML5 feature will require a polyfil for some browsers
+                    if (typeof responseHistory === "string"
+                        && responseHistory.toLowerCase() === "replace"
+                        && typeof history.replaceState === "function"
+                    ) {
+                        // update the current history with a new URL
+                        history.replaceState({
+                            treetop: true,
+                        }, "", responseURL);
+                    } else {
+                        // add a new history entry using response URL
+                        history.pushState({
+                            treetop: true,
+                        }, "", responseURL);
+                    }
+                }
+                $.xhrProcess(xhr, requestID, pageURL !== null);
+                return
+            }
+            
+            if(typeof $.onUnsupported === "function") {
                 // Fall through; this is not a response that treetop supports.
                 // Allow developer to handle.
                 $.onUnsupported(xhr, url);
@@ -398,8 +406,7 @@ window.treetop = (function ($) {
         }
     };
 
-    Treetop.prototype.PARTIAL_CONTENT_TYPE = $.PARTIAL_CONTENT_TYPE;
-    Treetop.prototype.FRAGMENT_CONTENT_TYPE = $.FRAGMENT_CONTENT_TYPE;
+    Treetop.prototype.TEMPLATE_CONTENT_TYPE = $.TEMPLATE_CONTENT_TYPE;
 
     var api = new Treetop();
     if (window.hasOwnProperty("TREETOP_CONFIG")) {
@@ -458,7 +465,7 @@ window.treetop = (function ($) {
     SINGLETONS: {"TITLE": true},
 
     /**
-     * Content-Type for Treetop partials
+     * Content-Type for Treetop templates
      *
      * This will be set as the `Accept` header for Treetop mediated XHR requests. The
      * server must respond with the same value as `Content-Type` or a client error result.
@@ -469,8 +476,7 @@ window.treetop = (function ($) {
      *
      * @type {String}
      */
-    PARTIAL_CONTENT_TYPE: "application/x.treetop-html-partial+xml",
-    FRAGMENT_CONTENT_TYPE: "application/x.treetop-html-fragment+xml",
+    TEMPLATE_CONTENT_TYPE: "application/x.treetop-html-template+xml",
 
     START: "treetopstart",
     COMPLETE: "treetopcomplete",
@@ -580,7 +586,7 @@ window.treetop = (function ($) {
             if ("BODY" in this.updates) {
                 updatedID = this.updates["BODY"];
             }
-            // dont descent further
+            // don't descent further
             return updatedID;
         } else if (nodeID && "#" + nodeID in this.updates) {
             updatedID = this.updates["#" + nodeID];
