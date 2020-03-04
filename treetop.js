@@ -518,6 +518,9 @@ window.treetop = (function ($) {
         // this will require a polyfil for browsers that do not support HTMLTemplateElement
         tmpl = document.createElement("template");
         tmpl.innerHTML = xhr.responseText;
+        if (tmpl.content.children.length === 1 && tmpl.content.firstChild.tagName === "TEMPLATE") {
+            tmpl = tmpl.content.firstChild
+        }
         matches = []
         for (i = 0, len = tmpl.content.children.length; i < len; i++) {
             neu = this.wrapElement(tmpl.content.children[i]);

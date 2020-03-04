@@ -150,7 +150,18 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<em id="test">after!</em>'
+        '<template><em id="test">after!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("after!");
+    });
+
+    it('should work without template tags', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">after!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("after!");
@@ -161,7 +172,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<em id="test_other">after!</em>'
+        '<template><em id="test_other">after!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("before!");
@@ -194,7 +205,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<form id="test"><p>OK!</p><input name="tagName"/></form>'
+        '<template><form id="test"><p>OK!</p><input name="tagName"/></form></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("OK!");
@@ -205,14 +216,14 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<form id="test"><p>FIRST!</p><input name="parentElement"/></form>'
+        '<template><form id="test"><p>FIRST!</p><input name="parentElement"/></form></template>'
       );
       window.flushTimers()
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<form id="test"><p>SECOND!</p><input name="othername"/></form>'
+        '<template><form id="test"><p>SECOND!</p><input name="othername"/></form></template>'
       );
       expect(document.getElementById("test").textContent).to.equal("SECOND!");
     });
@@ -236,13 +247,13 @@ describe('Treetop', () => {
       requests[1].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
-        '<em id="test">sooner!</em>'
+        '<template><em id="test">sooner!</em></template>'
      );
       window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
-        '<em id="test">later!</em>'
+        '<template><em id="test">later!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("sooner!");
@@ -258,13 +269,13 @@ describe('Treetop', () => {
       requests[1].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<em id="test">sooner!</em>'
+        '<template><em id="test">sooner!</em></template>'
       );
       window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<em id="test2">later!</em>'
+        '<template><em id="test2">later!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("sooner!");
@@ -282,13 +293,13 @@ describe('Treetop', () => {
       requests[1].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<p id="test"><span id="test-sub">container!</span></p>'
+        '<template><p id="test"><span id="test-sub">container!</span></p></template>'
       );
       window.flushTimers()
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<em id="test-sub">child!</em>'
+        '<template><em id="test-sub">child!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("container!");
@@ -315,7 +326,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul>'
+        '<template><ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("123456");
@@ -326,7 +337,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul>'
+        '<template><ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("456");
@@ -344,7 +355,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<title>New Title!</title>'
+        '<template><title>New Title!</title></template>'
       );
       window.flushTimers()
       expect(document.title).to.equal("New Title!");
@@ -355,7 +366,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<body><p id="test">New Body!</p></body>'
+        '<template><body><p id="test">New Body!</p></body></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test")).to.be.null;
@@ -368,7 +379,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<tr id="test"><td>New Cell!</td></tr>'
+        '<template><tr id="test"><td>New Cell!</td></tr></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("New Cell!");
@@ -391,7 +402,7 @@ describe('Treetop', () => {
         requests[0].respond(
           200,
           { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-          '<em id="test">after!</em>'
+          '<template><em id="test">after!</em></template>'
         );
         window.flushTimers()
         this.nue = document.getElementById('test');
@@ -427,7 +438,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
+        '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
       window.flushTimers()
       var el = document.getElementById("test-child");
@@ -440,7 +451,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
+        '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
       window.flushTimers()
       var el = document.getElementById("test-child");
@@ -478,7 +489,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test test2>New Cell!</p></div>'
+        '<template><div id="test"><p id="test-child" test test2>New Cell!</p></div></template>'
       );
       window.flushTimers()
       el = document.getElementById("test-child");
@@ -494,7 +505,7 @@ describe('Treetop', () => {
       requests[0].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test test2>New Data</p></div>'
+        '<template><div id="test"><p id="test-child" test test2>New Data</p></div></template>'
       );
       window.flushTimers()
       el = document.getElementById("test-child");
@@ -502,7 +513,7 @@ describe('Treetop', () => {
       requests[1].respond(
         200,
         { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<div id="test">replaced</div>'
+        '<template><div id="test">replaced</div></template>'
       );
       window.flushTimers()
       expect(calledWithStrict(unmount, el)).to.be.true;
