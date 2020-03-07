@@ -26,18 +26,19 @@ treetop.request(
 ### Initialization
 
 To make use of custom integration hooks and the built-in components, the client library
-must be initialized before any partial requests are made. Late arriving configuration
-will be rejected.
+must be initialized before any partial requests are made.
 
 <!-- TODO: add troubleshooting docs -->
 
 Initialization can be triggered actively using `treetop.init({...})` or passively by
-declaring a global variable `window.TREETOP_CONFIG` __before__ the client script loads.
-The config object is the same in both cases.
+declaring a global variable `window.TREETOP_CONFIG` _before_ the client script loads.
+The config object is identical in both cases.
 
-#### Config Example
+#### Config Example (passive)
+
 ```
-window.init({
+<script>
+window.TREETOP_CONFIG = {
   treetopAttr: true,
   mountAttrs: {
     "my-attr": (el) => { /*...*/ },
@@ -50,30 +51,9 @@ window.init({
   },
   onNetworkError: (xhr) => { /*...*/ },
   onUnsupported: (xhr) => { /*...*/ }
-});
-```
-
-## Treetop Browser Events
-
-When the client library is used to make an XHR request, events will be dispatched to indicate overall loading status.
-Note that, by design, the context of specific requests cannot be accessed this way.
-
-### Treetop Event Types:
-
-#### `"treetopstart"`
-This event is dispatched when an XHR request is initiated. It will only execute once for concurrent requests.
-#### `"treetopcomplete"`
-This event is dispatched when all active XHR requests are completed.
-
-#### Example
-
-```
-document.addEventListener("treetopstart", function () {
-    document.body.classList.add("loading");
-});
-document.addEventListener("treetopcomplete", function () {
-    document.body.classList.remove("loading");
-});
+};
+</script>
+<script src="treetop.js" async></script>
 ```
 
 ## Mounting Component
@@ -183,6 +163,29 @@ This custom merge implementation will be triggered if both new and old elements 
 
 <!-- new -->
 <ul id="list" treetop-merge="append-children"><li...
+```
+
+## Browser Events
+
+When the client library is used to make an XHR request, events will be dispatched to indicate overall loading status.
+Note that, by design, the context of specific requests cannot be accessed this way.
+
+### Event Types:
+
+#### `"treetopstart"`
+This event is dispatched when an XHR request is initiated. It will only execute once for concurrent requests.
+#### `"treetopcomplete"`
+This event is dispatched when all active XHR requests are completed.
+
+#### Example
+
+```
+document.addEventListener("treetopstart", function () {
+    document.body.classList.add("loading");
+});
+document.addEventListener("treetopcomplete", function () {
+    document.body.classList.remove("loading");
+});
 ```
 
 ## Browser Support & Ployfills

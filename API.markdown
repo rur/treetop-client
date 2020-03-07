@@ -216,9 +216,5 @@ treetop.unmount( [HTMLElement])
 | oldElement        | `HTMLElement` | Element attached to the DOM remove and unmount |
 
 
-
-## treetop.PARTIAL_CONTENT_TYPE
-The Treetop partial content type value supported by this version of the treetop client.
-
-## treetop.FRAGMENT_CONTENT_TYPE
-The Treetop fragment content type value supported by this version of the treetop client.
+## treetop.TEMPLATE_CONTENT_TYPE
+The Treetop content type value supported by the server-side handlers.
