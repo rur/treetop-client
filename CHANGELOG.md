@@ -1,4 +1,4 @@
-## [0.9.0] - WIP
+## [0.9.0] - 2020-03-10
 
 Adopt changes to Treetop protocol in v0.3.0 of the Go library.
 
