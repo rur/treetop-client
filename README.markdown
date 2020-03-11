@@ -2,7 +2,8 @@
 [![Build Status](https://travis-ci.org/rur/treetop-client.svg?branch=master)](https://travis-ci.org/rur/treetop-client)
 
 # Treetop Client
-This is the browser client library for Treetop enabled web servers. See [Treetop Library](https://github.com/rur/treetop) for more details. The _treetop.js_ script must be sourced by the web browser to enable in-page navigation.
+This is the browser client library for Treetop enabled web servers. See
+[Treetop Library](https://github.com/rur/treetop) for more details.
 
 ## Client API
 This library defines a `window.treetop` API instance. See [API Docs](API.markdown) for more details
@@ -23,10 +24,26 @@ treetop.request(
 
 ## Configuration
 
+### Installation
+
+The `treetop.js` script is old school, it intended to be self-contained, portable
+and work without tooling. You can use the file directly if you wish.
+
+Releases are published to [npm treetop-client](https://www.npmjs.com/package/treetop-client)
+if you are using NPM as your frontend dependency manager.
+
+    $ npm install treetop-client
+
+Ultimately the _treetop.js_ script must be sourced by the web browser.
+Note that the browser footprint is kept to a minimum. Some form of
+initiation is required before the library will add any browser bindings beyond
+assigning `window.treetop`.
+
+
 ### Initialization
 
-To make use of custom integration hooks and the built-in components, the client library
-must be initialized before any partial requests are made.
+To make use of custom integration hooks or the built-in components, the client
+must have configuration assigned **before** any XHR requests are made.
 
 <!-- TODO: add troubleshooting docs -->
 
@@ -55,6 +72,8 @@ window.TREETOP_CONFIG = {
 </script>
 <script src="treetop.js" async></script>
 ```
+
+Once set the the configuration is set it cannot be modified.
 
 ## Mounting Component
 
