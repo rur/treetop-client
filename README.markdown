@@ -73,7 +73,7 @@ window.TREETOP_CONFIG = {
 <script src="treetop.js" async></script>
 ```
 
-Once set the the configuration is set it cannot be modified.
+Once the configuration is set it cannot be modified.
 
 ## Mounting Component
 
