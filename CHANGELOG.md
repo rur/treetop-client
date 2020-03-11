@@ -1,3 +1,18 @@
+## [0.9.0] - 2020-03-10
+
+Adopt changes to Treetop protocol in v0.3.0 of the Go library.
+
+### Changed
+
+- Treetop content type changed to `application/x.treetop-html-template+xml`
+- Response URL is renamed to `X-Page-URL` and is now optional
+- Response body can now come wrapped in a `<template>...</template>` tag
+
+### Redirects
+- Redirects now use `Location` header
+- Status will continue to be 200
+- There must be a header named `X-Treetop-Redirect` with a value of `SeeOther`
+
 ## [0.8.1] - 2019-10-17
 
 ### Changed

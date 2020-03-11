@@ -55,7 +55,7 @@ describe('Treetop', () => {
     it('should have added the treetop header', () => {
       window.treetop.request("GET", "/test");
       var req = requests[0];
-      expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE)
+      expect(req.requestHeaders["accept"]).to.contain(treetop.TEMPLATE_CONTENT_TYPE)
     });
 
     it('should have no body', () => {
@@ -76,7 +76,7 @@ describe('Treetop', () => {
       expect(req).to.exist;
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("POST");
-      expect(req.requestHeaders["accept"]).to.contain(treetop.PARTIAL_CONTENT_TYPE);
+      expect(req.requestHeaders["accept"]).to.contain(treetop.TEMPLATE_CONTENT_TYPE);
       expect(req.url).to.equal("/test");
     });
 
@@ -149,8 +149,41 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<em id="test">after!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">after!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("after!");
+    });
+
+    it('should handle utf-8 encoded string', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">🕺!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("🕺!");
+    });
+
+    it('should handle a string with html entities encoding for unicode characters', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">&#x1F57A!</em></template>'
+      );
+      window.flushTimers()
+      expect(document.getElementById("test").textContent).to.equal("🕺!");
+    });
+
+    it('should work without template tags', () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">after!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("after!");
@@ -160,8 +193,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<em id="test_other">after!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test_other">after!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("before!");
@@ -182,7 +215,7 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
         'TESTING'
       );
       window.flushTimers()
@@ -193,8 +226,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<form id="test"><p>OK!</p><input name="tagName"/></form>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><form id="test"><p>OK!</p><input name="tagName"/></form></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("OK!");
@@ -204,15 +237,15 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<form id="test"><p>FIRST!</p><input name="parentElement"/></form>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><form id="test"><p>FIRST!</p><input name="parentElement"/></form></template>'
       );
       window.flushTimers()
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<form id="test"><p>SECOND!</p><input name="othername"/></form>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><form id="test"><p>SECOND!</p><input name="othername"/></form></template>'
       );
       expect(document.getElementById("test").textContent).to.equal("SECOND!");
     });
@@ -235,14 +268,14 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<em id="test">sooner!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
+        '<template><em id="test">sooner!</em></template>'
      );
       window.flushTimers()
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<em id="test">later!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
+        '<template><em id="test">later!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("sooner!");
@@ -257,14 +290,14 @@ describe('Treetop', () => {
       treetop.request("GET", "/test2");
       requests[1].respond(
         200,
-        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
-        '<em id="test">sooner!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test">sooner!</em></template>'
       );
       window.flushTimers()
       requests[0].respond(
         200,
-        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
-        '<em id="test2">later!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test2">later!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("sooner!");
@@ -281,14 +314,14 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
-        '<p id="test"><span id="test-sub">container!</span></p>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><p id="test"><span id="test-sub">container!</span></p></template>'
       );
       window.flushTimers()
       requests[0].respond(
         200,
-        { 'content-type': treetop.FRAGMENT_CONTENT_TYPE },
-        '<em id="test-sub">child!</em>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><em id="test-sub">child!</em></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("container!");
@@ -314,8 +347,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("123456");
@@ -325,8 +358,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("456");
@@ -343,8 +376,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<title>New Title!</title>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><title>New Title!</title></template>'
       );
       window.flushTimers()
       expect(document.title).to.equal("New Title!");
@@ -354,8 +387,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<body><p id="test">New Body!</p></body>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><body><p id="test">New Body!</p></body></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test")).to.be.null;
@@ -367,8 +400,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<tr id="test"><td>New Cell!</td></tr>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><tr id="test"><td>New Cell!</td></tr></template>'
       );
       window.flushTimers()
       expect(document.getElementById("test").textContent).to.equal("New Cell!");
@@ -390,8 +423,8 @@ describe('Treetop', () => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
-          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-          '<em id="test">after!</em>'
+          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+          '<template><em id="test">after!</em></template>'
         );
         window.flushTimers()
         this.nue = document.getElementById('test');
@@ -426,8 +459,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
       window.flushTimers()
       var el = document.getElementById("test-child");
@@ -439,8 +472,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test>New Cell!</p></div>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
       window.flushTimers()
       var el = document.getElementById("test-child");
@@ -453,7 +486,7 @@ describe('Treetop', () => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
-          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
           '<div id="test"><p id="test-child" test>New Cell!</p></div>'
         );
         window.flushTimers() // ensure any errors are raised at this stage
@@ -461,7 +494,7 @@ describe('Treetop', () => {
         treetop.request("GET", "/test");
         requests[1].respond(
           200,
-          { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
+          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
           '<div id="test">after!</div><div id="test2">after2!</div>'
         );
         window.flushTimers()
@@ -477,8 +510,8 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test test2>New Cell!</p></div>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><div id="test"><p id="test-child" test test2>New Cell!</p></div></template>'
       );
       window.flushTimers()
       el = document.getElementById("test-child");
@@ -493,16 +526,16 @@ describe('Treetop', () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<div id="test"><p id="test-child" test test2>New Data</p></div>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><div id="test"><p id="test-child" test test2>New Data</p></div></template>'
       );
       window.flushTimers()
       el = document.getElementById("test-child");
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.PARTIAL_CONTENT_TYPE },
-        '<div id="test">replaced</div>'
+        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><div id="test">replaced</div></template>'
       );
       window.flushTimers()
       expect(calledWithStrict(unmount, el)).to.be.true;
