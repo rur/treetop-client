@@ -26,7 +26,7 @@ treetop.request(
 
 ### Installation
 
-The `treetop.js` script is old school, it intended to be self-contained, portable
+The `treetop.js` script is old school, it is intended to be self-contained, portable
 and work without tooling. You can use the file directly if you wish.
 
 Releases are published to [npm treetop-client](https://www.npmjs.com/package/treetop-client)
