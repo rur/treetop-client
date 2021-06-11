@@ -47,7 +47,7 @@ window.treetop.init({
         treetop.mountChild(child, prev);
       });
     },
-    "test-mount-loop-error": (next, prev) => {
+    "test-recursive-merge": (next, prev) => {
       treetop.mergeFragment(next, prev);
     },
   },

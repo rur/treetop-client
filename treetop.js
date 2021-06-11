@@ -209,12 +209,43 @@ window.treetop = (function ($) {
     if (_fragment.notAnElement() || _target.notAnElement()) {
       throw new Error("Treetop: Expecting two HTMLElements");
     }
+    if (_fragment.element.__ttmerging__) {
+      throw new Error(
+        "Treetop: Recursive merge detected inside merge procedure " +
+          _fragment.getAttribute("treetop-merge") +
+          ". Be careful when using treetop.mergeFragment inside a custom merge function!"
+      );
+    }
     if (_target.parentElement().notAnElement()) {
       throw new Error(
         "Treetop: Cannot update an element that is not attached to the DOM"
       );
     }
-    $.updateElement(_fragment, _target);
+    $.mergeFragment(_fragment, _target);
+  };
+
+  /**
+   * Replace an existing DOM element with a new template fragment, calling
+   * unmount and mount attribute procedures
+   *
+   * @param {HTMLElement} neu: HTMLElement, not yet attached to the DOM
+   * @param {HTMLElement} old: node currently attached to the DOM
+   *
+   * @throws Error if the elements provided are not valid in some obvious way
+   */
+  Treetop.prototype.mountReplace = function (next, prev) {
+    var _next = $.wrapElement(next);
+    var _prev = $.wrapElement(prev);
+    _next.assertElement();
+    _prev.assertElement();
+    parent = _prev.parentElement();
+    if (parent.notAnElement()) {
+      // 'prev' is not attached to the DOM
+      return;
+    }
+    $.traverseApply(_prev, $.unmountAttrs);
+    parent.replaceChild(next, prev);
+    $.traverseApply(_next, $.mountAttrs);
   };
 
   /**
@@ -589,7 +620,7 @@ window.treetop = (function ($) {
       }
     }
     for (i = 0; i < matches.length; i += 2) {
-      this.updateElement(matches[i], matches[i + 1]);
+      this.mergeFragment(matches[i], matches[i + 1]);
     }
   },
 
@@ -606,7 +637,7 @@ window.treetop = (function ($) {
   },
 
   /**
-   * Given a HTMLELement node attached to the DOM, this will
+   * Given a HTMLElement node attached to the DOM, this will
    * the most recent update requestID for this node and all of its
    * parent nodes.
    *
@@ -636,40 +667,17 @@ window.treetop = (function ($) {
   },
 
   /**
-   * Default treetop merge method. Replace element followed by sync
-   * mount of next and unmount of previous elements.
-   *
-   * @param  {Element} next The element recently loaded from the API
-   * @param  {Element} prev The element currently within the DOM
-   */
-  defaultComposition: function (next, prev) {
-    "use strict";
-    var _next = this.wrapElement(next);
-    var _prev = this.wrapElement(prev);
-    _next.assertElement();
-    _prev.assertElement();
-    parent = _prev.parentElement();
-    if (parent.notAnElement()) {
-      // 'prev' is not attached to the DOM
-      return;
-    }
-    this.traverseApply(_prev, this.unmountAttrs);
-    parent.replaceChild(next, prev);
-    this.traverseApply(_next, this.mountAttrs);
-  },
-
-  /**
    * Apply a recently loaded element to an existing one attached to the DOM
    *
    * @param  {ElementWrapper} next The element recently loaded from the API
-   * @param  {ElementWrapper} prev The element currently within the DOM
+   * @param  {ElementWrapper} target The element currently within the DOM
    */
-  updateElement: function (next, prev) {
+  mergeFragment: function (next, target) {
     "use strict";
     next.assertElement();
-    prev.assertElement();
+    target.assertElement();
     var nextValue = next.getAttribute("treetop-merge");
-    var prevValue = prev.getAttribute("treetop-merge");
+    var prevValue = target.getAttribute("treetop-merge");
     if (
       typeof nextValue === "string" &&
       typeof prevValue === "string" &&
@@ -684,11 +692,19 @@ window.treetop = (function ($) {
       ) {
         // all criteria have been met, delegate update to custom merge function.
         var mergeFn = this.merge[nextValue];
-        mergeFn(next.element, prev.element);
+        try {
+          next.element.__ttmerging__ = true;
+          mergeFn(next.element, target.element, true);
+        } catch (err) {
+          throw err;
+        } finally {
+          delete next.element.__ttmerging__;
+        }
         return;
       }
     }
-    this.defaultComposition(next.element, prev.element);
+    // fallback DOM mutation
+    window.treetop.mountReplace(next.element, target.element);
   },
 
   /**

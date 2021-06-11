@@ -406,6 +406,37 @@ describe("Treetop", () => {
     });
   });
 
+  describe("treetop-merge detect recursive merge", () => {
+    var el = null;
+    beforeEach(() => {
+      el = document.createElement("div");
+      el.setAttribute("id", "test");
+      el.setAttribute("treetop-merge", "test-recursive-merge");
+      sandbox.appendChild(el);
+    });
+
+    afterEach(() => (sandbox.innerHTML = ""));
+
+    it("should replace if compose method does not match", () => {
+      treetop.request("GET", "/test");
+      try {
+        requests[0].respond(
+          200,
+          { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+          '<template><div id="test" treetop-merge="test-recursive-merge"></div></template>'
+        );
+        window.flushTimers();
+      } catch (error) {
+        expect(error.message).to.contain(
+          "Treetop: Recursive merge detected inside merge procedure test-recursive-merge. " +
+            "Be careful when using treetop.mergeFragment inside a custom merge function!"
+        );
+        return;
+      }
+      throw new Error("Expecting an error!");
+    });
+  });
+
   describe("Handle special cases of elements", () => {
     afterEach(() => {
       sandbox.innerHTML = "";
