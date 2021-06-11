@@ -192,28 +192,29 @@ window.treetop = (function ($) {
   };
 
   /**
-   * Update a existing DOM node with a new element. The elements will be merged
-   * and (un)mounted in the normal Treetop way.
+   * Merge a template fragment to the DOM targeting an existing DOM node. This function
+   * will check the `treetop-merge` attribute of the fragment root and target element
+   * for a merge procedure. If no procedure is found the default is `mountReplace`.
    *
-   * @param {HTMLElement} next: HTMLElement, not yet attached to the DOM
-   * @param {HTMLElement} prev: node currently attached to the DOM
+   * @param {HTMLElement} fragment: HTMLElement, not yet attached to the DOM
+   * @param {HTMLElement} target: node currently attached to the DOM
    *
    * @throws Error if the elements provided are not valid in some obvious way
    */
-  Treetop.prototype.updateElement = function (next, prev) {
-    var _next = $.wrapElement(next);
-    var _prev = $.wrapElement(prev);
+  Treetop.prototype.mergeFragment = function (fragment, target) {
+    var _fragment = $.wrapElement(fragment);
+    var _target = $.wrapElement(target);
     // make sure an error is raise if initialization happens after the API is used
     initialized = true;
-    if (_next.notAnElement() || _prev.notAnElement()) {
+    if (_fragment.notAnElement() || _target.notAnElement()) {
       throw new Error("Treetop: Expecting two HTMLElements");
     }
-    if (_prev.parentElement().notAnElement()) {
+    if (_target.parentElement().notAnElement()) {
       throw new Error(
         "Treetop: Cannot update an element that is not attached to the DOM"
       );
     }
-    $.updateElement(_next, _prev);
+    $.updateElement(_fragment, _target);
   };
 
   /**

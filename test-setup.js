@@ -44,13 +44,11 @@ window.treetop.init({
   merge: {
     test: (next, prev) => {
       Array.from(next.children).forEach((child) => {
-        prev.appendChild(child);
+        treetop.mountChild(child, prev);
       });
     },
-    "test-double-update": (next, prev) => {
-      Array.from(next.children).forEach((child) => {
-        prev.appendChild(child);
-      });
+    "test-mount-loop-error": (next, prev) => {
+      treetop.mergeFragment(next, prev);
     },
   },
 });
