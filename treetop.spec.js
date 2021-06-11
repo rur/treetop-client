@@ -383,7 +383,15 @@ describe("Treetop", () => {
     it("should have appended the child", () =>
       expect(el.parentNode.id).to.equal("sandbox"));
 
-    it("should append items to the list", () => {
+    it("should trigger merge when called using mergeFragment", () => {
+      const fragment = document.createElement("ul");
+      fragment.setAttribute("treetop-merge", "test");
+      fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
+      treetop.mergeFragment(fragment, el);
+      expect(el.textContent).to.eq("123456");
+    });
+
+    it("should append items to the list as a result of XHR", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -394,7 +402,15 @@ describe("Treetop", () => {
       expect(document.getElementById("test").textContent).to.equal("123456");
     });
 
-    it("should replace if compose method does not match", () => {
+    it("should fall back on replace when called using mergeFragment", () => {
+      const fragment = document.createElement("ul");
+      fragment.setAttribute("treetop-merge", "NOT-MATCHING");
+      fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
+      treetop.mergeFragment(fragment, el);
+      expect(sandbox.textContent).to.eq("456");
+    });
+
+    it("should replace if compose method does not match after XHR", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
@@ -613,7 +629,7 @@ describe("Treetop", () => {
     });
   });
 
-  describe("treetop.mergeFragment API method", () => {
+  describe("treetop.mountReplace API method", () => {
     beforeEach(() => {
       sandbox.innerHTML = "";
     });
@@ -624,7 +640,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.id = "test";
       el.textContent = "New Cell!";
-      treetop.mergeFragment(el, document.getElementById("test"));
+      treetop.mountReplace(el, document.getElementById("test"));
       expect(document.getElementById("test").textContent).to.equal("New Cell!");
     });
 
@@ -633,7 +649,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.mergeFragment(el, document.getElementById("test"));
+      treetop.mountReplace(el, document.getElementById("test"));
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
       var unmount = window.treetop.config().unmountAttrs["test"];
@@ -647,7 +663,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.mergeFragment(el, oldElm);
+      treetop.mountReplace(el, oldElm);
       var unmount = window.treetop.config().unmountAttrs["test"];
       expect(calledWithStrict(unmount, oldElm)).to.be.true;
       var mount = window.treetop.config().mountAttrs["test"];
