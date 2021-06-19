@@ -158,8 +158,8 @@ treetop.config()
 
 ## Modifying the DOM
 
-Basic DOM modification procedures for attaching and detaching a template fragment from the
-browser DOM. Incorporates mount/unmount attribute procedures in the process.
+Wrap basic DOM modification procedures to incorporate the mount/unmount process
+when attaching or detaching an element from a web page.
 
 ### treetop.mountReplace
 
