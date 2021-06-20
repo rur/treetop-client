@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/rur/treetop-client.svg?branch=master)](https://travis-ci.org/rur/treetop-client)
+[![Build Status](https://rur.semaphoreci.com/badges/treetop-client/branches/master.svg?style=shields)](https://rur.semaphoreci.com/projects/treetop-client)
 
 # Treetop Client
 
@@ -7,9 +7,7 @@ This is the browser client library for Treetop enabled web servers. See
 
 ## Client API
 
-This library defines a `window.treetop` API instance.
-
-See [API Docs](API.markdown) for more details
+This library defines a `window.treetop` API instance. See [API Docs](API.markdown) for more details
 
 ### Example request using API
 
