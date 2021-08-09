@@ -12,12 +12,12 @@ following API.
     -   [init( [config] )](#treetopinit)
     -   [config()](#treetopconfig)
 -   _Mounting Elements:_
-    -   [mountReplace( [HTMLElement], [HTMLElement] )](#treetopmountreplace)
+    -   [mount( [HTMLElement], [HTMLElement] )](#treetopmount)
     -   [mountChild( [HTMLElement], [HTMLElement] )](#treetopmountchild)
     -   [mountBefore( [HTMLElement], [HTMLElement] )](#treetopmountbefore)
     -   [unmount( [HTMLElement])](#treetopunmount)
 -   _Misc:_
-    -   [mergeTemplate( [HTMLElement], [HTMLElement] )](#treetopmergetemplate)
+    -   [merge( [HTMLElement], [HTMLElement] )](#treetopmerge)
     -   [TEMPLATE_CONTENT_TYPE](#treetoptemplatecontenttype)
 
 ## Issue Requests
@@ -161,23 +161,22 @@ treetop.config()
 Wrap basic DOM modification procedures to incorporate the mount/unmount process
 when attaching or detaching an element from a web page.
 
-### treetop.mountReplace
+### treetop.mount
 
-Run unmount procedure on the old element, then replace it in the DOM with the new element,
-and run the mount procedure on the new element.
+Attach a new template fragment to the DOM replacing an existing DOM node.
+The unmount procedure is run on the old element, then it is replaced with the new element.
+The mount procedure is then run on the new element.
 
 ```
-var oldElm = document.getElementById("my-section");
 var newElm = document.createElement("p");
-treetop.mountReplace(newElm, oldElm);
-
+var oldElm = document.getElementById("my-section");
+treetop.mount(newElm, oldElm);
 ```
 
 ##### Usage
 
 ```
-treetop.mountReplace( [HTMLElement], [HTMLElement] );
-
+treetop.mount( [HTMLElement], [HTMLElement] );
 ```
 
 ##### Arguments:
@@ -256,22 +255,22 @@ treetop.unmount( [HTMLElement])
 
 ## Misc
 
-### treetop.mergeFragment
+### treetop.merge
 
 This is the procedure that is called to apply a template fragment to a target location
 attached to the DOM. It will check for matching treetop-merge attribute. If a custom merge
-procedure is not found, the default [mountReplace](#treetopmountreplace) procedure is used.
+procedure is not found, the default [mount](#treetopmount) procedure is used.
 
 ```
 var target = document.getElementById("my-section");
 var fragment = document.createElement("p");
-treetop.mergeTemplate(fragment, target);
+treetop.merge(fragment, target);
 ```
 
 ##### Usage
 
 ```
-treetop.mergeFragment( [HTMLElement], [HTMLElement] )
+treetop.merge( [HTMLElement], [HTMLElement] )
 ```
 
 ##### Arguments:

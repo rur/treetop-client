@@ -196,14 +196,14 @@ window.treetop = (function ($) {
     /**
      * Merge a template fragment to the DOM targeting an existing DOM node. This function
      * will check the `treetop-merge` attribute of the fragment root and target element
-     * for a merge procedure. If no procedure is found the default is `mountReplace`.
+     * for a merge procedure. If no procedure is found the default is `mount`.
      *
      * @param {HTMLElement} fragment: HTMLElement, not yet attached to the DOM
      * @param {HTMLElement} target: node currently attached to the DOM
      *
      * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mergeFragment = function (fragment, target) {
+    Treetop.prototype.merge = function (fragment, target) {
         var _fragment = $.wrapElement(fragment);
         var _target = $.wrapElement(target);
         // make sure an error is raise if initialization happens after the API is used
@@ -215,7 +215,7 @@ window.treetop = (function ($) {
             throw new Error(
                 "Treetop: Recursive merge detected inside merge procedure " +
                     _fragment.getAttribute("treetop-merge") +
-                    ". Be careful when using treetop.mergeFragment inside a custom merge function!"
+                    ". Be careful when using treetop.merge inside a custom merge function!"
             );
         }
         if (_target.parentElement().notAnElement()) {
@@ -223,7 +223,7 @@ window.treetop = (function ($) {
                 "Treetop: Cannot update an element that is not attached to the DOM"
             );
         }
-        $.mergeFragment(_fragment, _target);
+        $.mergeProcess(_fragment, _target);
     };
 
     /**
@@ -235,7 +235,7 @@ window.treetop = (function ($) {
      *
      * @throws Error if the elements provided are not valid in some obvious way
      */
-    Treetop.prototype.mountReplace = function (next, prev) {
+    Treetop.prototype.mount = function (next, prev) {
         var _next = $.wrapElement(next);
         var _prev = $.wrapElement(prev);
         _next.assertElement();
@@ -539,7 +539,7 @@ window.treetop = (function ($) {
      * server must respond with the same value as `Content-Type` or a client error result.
      *
      * With respect to the media type value, we are taking advantage of the unregistered 'x.' tree while
-     * Treetop is a proof-of-concept project. Should a stable API emerge at a later point, then registering a personal
+     * Treetop is a proof-of-concept project. Should a stable API merge at a later point, then registering a personal
      * or vendor MEME-type would be considered. See https://tools.ietf.org/html/rfc6838#section-3.4
      *
      * @type {String}
@@ -626,7 +626,7 @@ window.treetop = (function ($) {
             }
         }
         for (i = 0; i < matches.length; i += 2) {
-            this.mergeFragment(matches[i], matches[i + 1]);
+            this.mergeProcess(matches[i], matches[i + 1]);
         }
     },
 
@@ -678,7 +678,7 @@ window.treetop = (function ($) {
      * @param  {ElementWrapper} next The element recently loaded from the API
      * @param  {ElementWrapper} target The element currently within the DOM
      */
-    mergeFragment: function (next, target) {
+    mergeProcess: function (next, target) {
         "use strict";
         next.assertElement();
         target.assertElement();
@@ -710,7 +710,7 @@ window.treetop = (function ($) {
             }
         }
         // fallback DOM mutation
-        window.treetop.mountReplace(next.element, target.element);
+        window.treetop.mount(next.element, target.element);
     },
 
     /**

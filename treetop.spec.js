@@ -383,11 +383,11 @@ describe("Treetop", () => {
     it("should have appended the child", () =>
       expect(el.parentNode.id).to.equal("sandbox"));
 
-    it("should trigger merge when called using mergeFragment", () => {
+    it("should trigger merge when called using treetop.merge", () => {
       const fragment = document.createElement("ul");
       fragment.setAttribute("treetop-merge", "test");
       fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
-      treetop.mergeFragment(fragment, el);
+      treetop.merge(fragment, el);
       expect(el.textContent).to.eq("123456");
     });
 
@@ -402,11 +402,11 @@ describe("Treetop", () => {
       expect(document.getElementById("test").textContent).to.equal("123456");
     });
 
-    it("should fall back on replace when called using mergeFragment", () => {
+    it("should fall back on replace when called using treetop.merge", () => {
       const fragment = document.createElement("ul");
       fragment.setAttribute("treetop-merge", "NOT-MATCHING");
       fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
-      treetop.mergeFragment(fragment, el);
+      treetop.merge(fragment, el);
       expect(sandbox.textContent).to.eq("456");
     });
 
@@ -445,7 +445,7 @@ describe("Treetop", () => {
       } catch (error) {
         expect(error.message).to.contain(
           "Treetop: Recursive merge detected inside merge procedure test-recursive-merge. " +
-            "Be careful when using treetop.mergeFragment inside a custom merge function!"
+            "Be careful when using treetop.merge inside a custom merge function!"
         );
         return;
       }
@@ -629,7 +629,7 @@ describe("Treetop", () => {
     });
   });
 
-  describe("treetop.mountReplace API method", () => {
+  describe("treetop.mountAPI method", () => {
     beforeEach(() => {
       sandbox.innerHTML = "";
     });
@@ -640,7 +640,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.id = "test";
       el.textContent = "New Cell!";
-      treetop.mountReplace(el, document.getElementById("test"));
+      treetop.mount(el, document.getElementById("test"));
       expect(document.getElementById("test").textContent).to.equal("New Cell!");
     });
 
@@ -649,7 +649,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.mountReplace(el, document.getElementById("test"));
+      treetop.mount(el, document.getElementById("test"));
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
       var unmount = window.treetop.config().unmountAttrs["test"];
@@ -663,7 +663,7 @@ describe("Treetop", () => {
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.mountReplace(el, oldElm);
+      treetop.mount(el, oldElm);
       var unmount = window.treetop.config().unmountAttrs["test"];
       expect(calledWithStrict(unmount, oldElm)).to.be.true;
       var mount = window.treetop.config().mountAttrs["test"];
