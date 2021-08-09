@@ -15,6 +15,8 @@ Address issues with the DOM mount API, clarify merge vs. mount.
 ### Changes
 
 -   Add an _.editorconfig_ and apply an automatic code formatter
+-   Remove internal `defaultComposition` method
+-   Minor improvements to API reference markdown
 
 ## [0.9.0] - 2020-03-10
 
