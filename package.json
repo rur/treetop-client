@@ -1,32 +1,32 @@
 {
-  "name": "treetop-client",
-  "version": "0.9.0",
-  "description": "Browser client library for Treetop enabled web application",
-  "main": "treetop.js",
-  "scripts": {
-    "test": "karma start --single-run --browsers ChromeHeadless karma.conf.js",
-    "autotest": "mocha --watch ./test-setup.js ./treetop.js ./treetop.spec.js"
-  },
-  "devDependencies": {
-    "chai": "^4.3.4",
-    "glob-parent": ">=5.1.2",
-    "karma": "^6.3.2",
-    "karma-chai": "^0.1.0",
-    "karma-chrome-launcher": "^3.1.0",
-    "karma-mocha": "^2.0.1",
-    "karma-sinon": "^1.0.5",
-    "mocha": "^8.3.2",
-    "sinon": "^10.0.0",
-    "ws": ">=7.4.6"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rur/treetop-client.git"
-  },
-  "author": "Ruaidhri Devery <deveryr2@gmail.com>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/rur/treetop-client/issues"
-  },
-  "homepage": "https://github.com/rur/treetop-client#readme"
+    "name": "treetop-client",
+    "version": "0.10.0",
+    "description": "Browser client library for Treetop enabled web application",
+    "main": "treetop.js",
+    "scripts": {
+        "test": "karma start --single-run --browsers ChromeHeadless karma.conf.js",
+        "autotest": "mocha --watch ./test-setup.js ./treetop.js ./treetop.spec.js"
+    },
+    "devDependencies": {
+        "chai": "^4.3.4",
+        "glob-parent": ">=5.1.2",
+        "karma": "^6.3.2",
+        "karma-chai": "^0.1.0",
+        "karma-chrome-launcher": "^3.1.0",
+        "karma-mocha": "^2.0.1",
+        "karma-sinon": "^1.0.5",
+        "mocha": "^8.3.2",
+        "sinon": "^10.0.0",
+        "ws": ">=7.4.6"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/rur/treetop-client.git"
+    },
+    "author": "Ruaidhri Devery <deveryr2@gmail.com>",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/rur/treetop-client/issues"
+    },
+    "homepage": "https://github.com/rur/treetop-client#readme"
 }
