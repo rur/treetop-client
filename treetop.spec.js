@@ -1,12 +1,12 @@
 /*eslint-env browser, es6, jasmine */
 /*eslint indent: ['error', 2], quotes: [0, 'single'] */
 const expect = chai.expect;
-sandbox = document.createElement("div")
-sandbox.id = "sandbox"
-document.body.append(sandbox)
+sandbox = document.createElement("div");
+sandbox.id = "sandbox";
+document.body.append(sandbox);
 
-describe('Treetop', () => {
-  'strict mode';
+describe("Treetop", () => {
+  "strict mode";
   var treetop, requests;
 
   beforeEach(() => {
@@ -19,8 +19,20 @@ describe('Treetop', () => {
     };
     var config = treetop.config();
     // reset all mount spys
-    Object.values(config.mountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
-    Object.values(config.unmountAttrs).map(s => { try { s.resetHistory() } catch (e) {"pass"}})
+    Object.values(config.mountAttrs).map((s) => {
+      try {
+        s.resetHistory();
+      } catch (e) {
+        ("pass");
+      }
+    });
+    Object.values(config.unmountAttrs).map((s) => {
+      try {
+        s.resetHistory();
+      } catch (e) {
+        ("pass");
+      }
+    });
     window.flushTimers();
   });
 
@@ -28,81 +40,100 @@ describe('Treetop', () => {
     this.xhr.restore();
   });
 
-  it('should not allow init to be called more than once', () => {
+  it("should not allow init to be called more than once", () => {
     try {
       window.treetop.init();
     } catch (err) {
-      expect(err.toString()).to.contain("Treetop: Failed attempt to re-initialize")
-      return
+      expect(err.toString()).to.contain(
+        "Treetop: Failed attempt to re-initialize"
+      );
+      return;
     }
     throw Error("An error was not thrown");
   });
 
-  describe('issue basic GET request', () => {
-    it('should have issued a request', () => {
+  describe("issue basic GET request", () => {
+    it("should have issued a request", () => {
       window.treetop.request("GET", "/test");
       var req = requests[0];
-      expect(req).to.exist
+      expect(req).to.exist;
     });
 
-    it('should have issued a request with the method and url', () => {
+    it("should have issued a request with the method and url", () => {
       window.treetop.request("GET", "/test");
       var req = requests[0];
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("GET");
     });
 
-    it('should have added the treetop header', () => {
+    it("should have added the treetop header", () => {
       window.treetop.request("GET", "/test");
       var req = requests[0];
-      expect(req.requestHeaders["accept"]).to.contain(treetop.TEMPLATE_CONTENT_TYPE)
+      expect(req.requestHeaders["accept"]).to.contain(
+        treetop.TEMPLATE_CONTENT_TYPE
+      );
     });
 
-    it('should have no body', () => {
+    it("should have no body", () => {
       window.treetop.request("GET", "/test");
       var req = requests[0];
-      expect(req.requestBody).to.be.null
+      expect(req.requestBody).to.be.null;
     });
   });
 
-  describe('issue basic POST request', () => {
+  describe("issue basic POST request", () => {
     var req = null;
     beforeEach(() => {
-      treetop.request("POST", "/test", "a=123&b=987", "application/x-www-form-urlencoded");
+      treetop.request(
+        "POST",
+        "/test",
+        "a=123&b=987",
+        "application/x-www-form-urlencoded"
+      );
       req = requests[0];
     });
 
-    it('should have issued a request with right info', () => {
+    it("should have issued a request with right info", () => {
       expect(req).to.exist;
       expect(req.url).to.contain("/test");
       expect(req.method).to.equal("POST");
-      expect(req.requestHeaders["accept"]).to.contain(treetop.TEMPLATE_CONTENT_TYPE);
+      expect(req.requestHeaders["accept"]).to.contain(
+        treetop.TEMPLATE_CONTENT_TYPE
+      );
       expect(req.url).to.equal("/test");
     });
 
-    it('should have added the content type header', () =>
-      expect(req.requestHeaders["content-type"])
-        .to.contain("application/x-www-form-urlencoded")
-    );
+    it("should have added the content type header", () =>
+      expect(req.requestHeaders["content-type"]).to.contain(
+        "application/x-www-form-urlencoded"
+      ));
 
-    it('should have a body', () => expect(req.requestBody).to.equal("a=123&b=987"));
+    it("should have a body", () =>
+      expect(req.requestBody).to.equal("a=123&b=987"));
   });
 
-  describe('include headers', () => {
-    it('should include one header', () => {
-      treetop.request("POST", "/test", "a=123&b=987", "application/x-www-form-urlencoded", [["x-custom-header", "VALUE"]]);
-      var req = requests[0];
-      expect(req.requestHeaders["x-custom-header"]).to.eq("VALUE");
-    });
-
-    it('should include multiple headers', () => {
+  describe("include headers", () => {
+    it("should include one header", () => {
       treetop.request(
         "POST",
         "/test",
         "a=123&b=987",
         "application/x-www-form-urlencoded",
-        [["x-custom-header", "VALUE"]
-        ,["x-custom-header-2", "VALUE_2"]
+        [["x-custom-header", "VALUE"]]
+      );
+      var req = requests[0];
+      expect(req.requestHeaders["x-custom-header"]).to.eq("VALUE");
+    });
+
+    it("should include multiple headers", () => {
+      treetop.request(
+        "POST",
+        "/test",
+        "a=123&b=987",
+        "application/x-www-form-urlencoded",
+        [
+          ["x-custom-header", "VALUE"],
+          ["x-custom-header-2", "VALUE_2"],
         ]
       );
       var req = requests[0];
@@ -110,14 +141,15 @@ describe('Treetop', () => {
       expect(req.requestHeaders["x-custom-header-2"]).to.eq("VALUE_2");
     });
 
-    it('should include duplicate headers', () => {
+    it("should include duplicate headers", () => {
       treetop.request(
         "POST",
         "/test",
         "a=123&b=987",
         "application/x-www-form-urlencoded",
-        [["x-custom-header", "VALUE"]
-        ,["x-custom-header", "VALUE_2"]
+        [
+          ["x-custom-header", "VALUE"],
+          ["x-custom-header", "VALUE_2"],
         ]
       );
       var req = requests[0];
@@ -125,14 +157,13 @@ describe('Treetop', () => {
     });
   });
 
-  describe('rejected request', () =>
-    it('should have a white list of methods', () =>
-      expect(() => treetop.request("NOMETHOD"))
-        .to.throw("Treetop: Unknown request method 'NOMETHOD'")
-    )
-  );
+  describe("rejected request", () =>
+    it("should have a white list of methods", () =>
+      expect(() => treetop.request("NOMETHOD")).to.throw(
+        "Treetop: Unknown request method 'NOMETHOD'"
+      )));
 
-  describe('replace indexed elements', () => {
+  describe("replace indexed elements", () => {
     var el = null;
     beforeEach(() => {
       el = document.createElement("p");
@@ -141,67 +172,68 @@ describe('Treetop', () => {
       sandbox.appendChild(el);
     });
 
-    afterEach(() => sandbox.innerHTML = "");
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    it('should have appended the child', () => expect(el.parentNode.id).to.equal("sandbox"));
+    it("should have appended the child", () =>
+      expect(el.parentNode.id).to.equal("sandbox"));
 
-    it('should replace <p>before!</p> with <em>after!</em>', () => {
+    it("should replace <p>before!</p> with <em>after!</em>", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test">after!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("after!");
     });
 
-    it('should handle utf-8 encoded string', () => {
+    it("should handle utf-8 encoded string", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test">🕺!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("🕺!");
     });
 
-    it('should handle a string with html entities encoding for unicode characters', () => {
+    it("should handle a string with html entities encoding for unicode characters", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test">&#x1F57A!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("🕺!");
     });
 
-    it('should work without template tags', () => {
+    it("should work without template tags", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test">after!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("after!");
     });
 
-    it('should do nothing with an unmatched response', () => {
+    it("should do nothing with an unmatched response", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test_other">after!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("before!");
     });
   });
 
-  describe('response handling edge cases', () => {
+  describe("response handling edge cases", () => {
     beforeEach(() => {
       var el = document.createElement("p");
       el.setAttribute("id", "test");
@@ -209,49 +241,49 @@ describe('Treetop', () => {
       sandbox.appendChild(el);
     });
 
-    afterEach(() => sandbox.innerHTML = "");
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    it('ignore test nodes', () => {
+    it("ignore test nodes", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        'TESTING'
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+        "TESTING"
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("before!");
     });
 
-    it('form element with input names shadowing element properties', () => {
+    it("form element with input names shadowing element properties", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><form id="test"><p>OK!</p><input name="tagName"/></form></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("OK!");
     });
 
-    it('replace child of a form element when properties are shadowed', () => {
+    it("replace child of a form element when properties are shadowed", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><form id="test"><p>FIRST!</p><input name="parentElement"/></form></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><form id="test"><p>SECOND!</p><input name="othername"/></form></template>'
       );
       expect(document.getElementById("test").textContent).to.equal("SECOND!");
     });
   });
 
-  describe('late arriving responses', () => {
+  describe("late arriving responses", () => {
     beforeEach(() => {
       var el = document.createElement("p");
       el.setAttribute("id", "test");
@@ -260,28 +292,34 @@ describe('Treetop', () => {
     });
 
     afterEach(() => {
-      sandbox.innerHTML = ""
+      sandbox.innerHTML = "";
     });
 
-    it('should ignore a stale partial response', () => {
+    it("should ignore a stale partial response", () => {
       treetop.request("GET", "/test");
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
+        {
+          "content-type": treetop.TEMPLATE_CONTENT_TYPE,
+          "X-Page-URL": "/test",
+        },
         '<template><em id="test">sooner!</em></template>'
-     );
-      window.flushTimers()
+      );
+      window.flushTimers();
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE, 'X-Page-URL': "/test" },
+        {
+          "content-type": treetop.TEMPLATE_CONTENT_TYPE,
+          "X-Page-URL": "/test",
+        },
         '<template><em id="test">later!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("sooner!");
     });
 
-    it('should allow a late arriving update to unrelated part of the DOM', () => {
+    it("should allow a late arriving update to unrelated part of the DOM", () => {
       var el = document.createElement("p");
       el.setAttribute("id", "test2");
       el.textContent = "bottom!";
@@ -290,46 +328,47 @@ describe('Treetop', () => {
       treetop.request("GET", "/test2");
       requests[1].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test">sooner!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test2">later!</em></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("sooner!");
       expect(document.getElementById("test2").textContent).to.equal("later!");
     });
 
-    it('should ignore stale updates to children of updated containers', () => {
-      var p = document.getElementById("test")
-      var sub = document.createElement("span")
-      sub.setAttribute("id", "test-sub")
-      sub.textContent = "Sub Content!"
-      p.appendChild(sub)
+    it("should ignore stale updates to children of updated containers", () => {
+      var p = document.getElementById("test");
+      var sub = document.createElement("span");
+      sub.setAttribute("id", "test-sub");
+      sub.textContent = "Sub Content!";
+      p.appendChild(sub);
       treetop.request("GET", "/test-sub");
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><p id="test"><span id="test-sub">container!</span></p></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><em id="test-sub">child!</em></template>'
       );
-      window.flushTimers()
-      expect(document.getElementById("test").textContent).to.equal("container!");
+      window.flushTimers();
+      expect(document.getElementById("test").textContent).to.equal(
+        "container!"
+      );
     });
-
   });
 
-  describe('compose indexed elements', () => {
+  describe("treetop-merge indexed elements", () => {
     var el = null;
     beforeEach(() => {
       el = document.createElement("ul");
@@ -339,76 +378,123 @@ describe('Treetop', () => {
       sandbox.appendChild(el);
     });
 
-    afterEach(() => sandbox.innerHTML = "");
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    it('should have appended the child', () => expect(el.parentNode.id).to.equal("sandbox"));
+    it("should have appended the child", () =>
+      expect(el.parentNode.id).to.equal("sandbox"));
 
-    it('should append items to the list', () => {
+    it("should trigger merge when called using treetop.merge", () => {
+      const fragment = document.createElement("ul");
+      fragment.setAttribute("treetop-merge", "test");
+      fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
+      treetop.merge(fragment, el);
+      expect(el.textContent).to.eq("123456");
+    });
+
+    it("should append items to the list as a result of XHR", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><ul id="test" treetop-merge="test"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("123456");
     });
 
-    it('should replace if compose method does not match', () => {
+    it("should fall back on replace when called using treetop.merge", () => {
+      const fragment = document.createElement("ul");
+      fragment.setAttribute("treetop-merge", "NOT-MATCHING");
+      fragment.innerHTML = "<li>4</li><li>5</li><li>6</li></ul>";
+      treetop.merge(fragment, el);
+      expect(sandbox.textContent).to.eq("456");
+    });
+
+    it("should replace if compose method does not match after XHR", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><ul id="test" treetop-merge="something-else"><li>4</li><li>5</li><li>6</li></ul></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(document.getElementById("test").textContent).to.equal("456");
     });
   });
 
+  describe("treetop-merge detect recursive merge", () => {
+    var el = null;
+    beforeEach(() => {
+      el = document.createElement("div");
+      el.setAttribute("id", "test");
+      el.setAttribute("treetop-merge", "test-recursive-merge");
+      sandbox.appendChild(el);
+    });
 
-  describe('Handle special cases of elements', () => {
-    afterEach(()=>{
-      sandbox.innerHTML = ""
-    })
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    it('should replace title tag', () => {
+    it("should replace if compose method does not match", () => {
       treetop.request("GET", "/test");
-      requests[0].respond(
-        200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<template><title>New Title!</title></template>'
-      );
-      window.flushTimers()
-      expect(document.title).to.equal("New Title!");
-    })
-
-    it('should not replace body tag', () => {
-      treetop.request("GET", "/test");
-      requests[0].respond(
-        200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<template><body><p id="test">New Body!</p></body></template>'
-      );
-      window.flushTimers()
-      expect(document.getElementById("test")).to.be.null;
-    })
-
-    it('should handle dependent element types', () => {
-      // see http://www.ericvasilik.com/2006/07/code-karma.html
-      sandbox.innerHTML = '<table><tr id="test"><td>OLD CELL</td></tr></table>'
-      treetop.request("GET", "/test");
-      requests[0].respond(
-        200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
-        '<template><tr id="test"><td>New Cell!</td></tr></template>'
-      );
-      window.flushTimers()
-      expect(document.getElementById("test").textContent).to.equal("New Cell!");
-    })
+      try {
+        requests[0].respond(
+          200,
+          { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+          '<template><div id="test" treetop-merge="test-recursive-merge"></div></template>'
+        );
+        window.flushTimers();
+      } catch (error) {
+        expect(error.message).to.contain(
+          "Treetop: Recursive merge detected inside merge procedure test-recursive-merge. " +
+            "Be careful when using treetop.merge inside a custom merge function!"
+        );
+        return;
+      }
+      throw new Error("Expecting an error!");
+    });
   });
 
-  describe('mounting and unmounting elements', () => {
+  describe("Handle special cases of elements", () => {
+    afterEach(() => {
+      sandbox.innerHTML = "";
+    });
+
+    it("should replace title tag", () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+        "<template><title>New Title!</title></template>"
+      );
+      window.flushTimers();
+      expect(document.title).to.equal("New Title!");
+    });
+
+    it("should not replace body tag", () => {
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><body><p id="test">New Body!</p></body></template>'
+      );
+      window.flushTimers();
+      expect(document.getElementById("test")).to.be.null;
+    });
+
+    it("should handle dependent element types", () => {
+      // see http://www.ericvasilik.com/2006/07/code-karma.html
+      sandbox.innerHTML = '<table><tr id="test"><td>OLD CELL</td></tr></table>';
+      treetop.request("GET", "/test");
+      requests[0].respond(
+        200,
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
+        '<template><tr id="test"><td>New Cell!</td></tr></template>'
+      );
+      window.flushTimers();
+      expect(document.getElementById("test").textContent).to.equal("New Cell!");
+    });
+  });
+
+  describe("mounting and unmounting elements", () => {
     beforeEach(() => {
       this.el = document.createElement("DIV");
       this.el.textContent = "Before!";
@@ -416,31 +502,31 @@ describe('Treetop', () => {
       sandbox.appendChild(this.el);
     });
 
-    afterEach(() => sandbox.innerHTML = "");
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    describe('when elements are replaced', () => {
+    describe("when elements are replaced", () => {
       beforeEach(() => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
-          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+          { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
           '<template><em id="test">after!</em></template>'
         );
-        window.flushTimers()
-        this.nue = document.getElementById('test');
+        window.flushTimers();
+        this.nue = document.getElementById("test");
       });
 
-      it('should remove the element from the DOM', () => {
+      it("should remove the element from the DOM", () => {
         expect(this.el.parentNode).to.be.null;
       });
 
-      it('should have inserted the new #test element', () => {
+      it("should have inserted the new #test element", () => {
         expect(this.nue.tagName).to.equal("EM");
       });
     });
   });
 
-  describe('binding components', () => {
+  describe("binding components", () => {
     var config;
     beforeEach(() => {
       var el = document.createElement("p");
@@ -453,129 +539,131 @@ describe('Treetop', () => {
       config = window.treetop.config();
     });
 
-    afterEach(() => sandbox.innerHTML = "");
+    afterEach(() => (sandbox.innerHTML = ""));
 
-    it('should have called the mount on the attribute', () => {
+    it("should have called the mount on the attribute", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       var el = document.getElementById("test-child");
-      var mount = config.mountAttrs["test"]
+      var mount = config.mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
     });
 
-    it('should not have called unmount on the new element', () => {
+    it("should not have called unmount on the new element", () => {
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><div id="test"><p id="test-child" test>New Cell!</p></div></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       var el = document.getElementById("test-child");
-      var unmount = config.unmountAttrs["test"]
+      var unmount = config.unmountAttrs["test"];
       expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
-    describe('when unmounted', () => {
-      it('should have called the unmount on the attribute', () => {
+    describe("when unmounted", () => {
+      it("should have called the unmount on the attribute", () => {
         treetop.request("GET", "/test");
         requests[0].respond(
           200,
-          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+          { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
           '<div id="test"><p id="test-child" test>New Cell!</p></div>'
         );
-        window.flushTimers() // ensure any errors are raised at this stage
+        window.flushTimers(); // ensure any errors are raised at this stage
         var el = document.getElementById("test-child");
         treetop.request("GET", "/test");
         requests[1].respond(
           200,
-          { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+          { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
           '<div id="test">after!</div><div id="test2">after2!</div>'
         );
-        window.flushTimers()
-        var unmount = config.unmountAttrs["test"]
+        window.flushTimers();
+        var unmount = config.unmountAttrs["test"];
         expect(calledWithStrict(unmount, el)).to.be.true;
       });
     });
 
-    it('should have called mount on the same component multiple times', () => {
+    it("should have called mount on the same component multiple times", () => {
       var el;
-      var mount = config.mountAttrs["test"]
-      var mount2 = config.mountAttrs["test2"]
+      var mount = config.mountAttrs["test"];
+      var mount2 = config.mountAttrs["test2"];
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><div id="test"><p id="test-child" test test2>New Cell!</p></div></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       el = document.getElementById("test-child");
       expect(calledWithStrict(mount, el)).to.be.true;
       expect(calledWithStrict(mount2, el)).to.be.true;
     });
 
-    it('should have called unmount on the same element multiple times', () => {
+    it("should have called unmount on the same element multiple times", () => {
       var el;
-      var unmount = config.unmountAttrs["test"]
-      var unmount2 = config.unmountAttrs["test2"]
+      var unmount = config.unmountAttrs["test"];
+      var unmount2 = config.unmountAttrs["test2"];
       treetop.request("GET", "/test");
       requests[0].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><div id="test"><p id="test-child" test test2>New Data</p></div></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       el = document.getElementById("test-child");
       treetop.request("GET", "/test");
       requests[1].respond(
         200,
-        { 'content-type': treetop.TEMPLATE_CONTENT_TYPE },
+        { "content-type": treetop.TEMPLATE_CONTENT_TYPE },
         '<template><div id="test">replaced</div></template>'
       );
-      window.flushTimers()
+      window.flushTimers();
       expect(calledWithStrict(unmount, el)).to.be.true;
       expect(calledWithStrict(unmount2, el)).to.be.true;
     });
   });
 
-  describe('treetop.updateElement API method', () => {
+  describe("treetop.mountAPI method", () => {
     beforeEach(() => {
       sandbox.innerHTML = "";
     });
 
-    it('should allow an element to be created outside and mounted normally', () => {
-      sandbox.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></tablen>';
+    it("should allow an element to be created outside and mounted normally", () => {
+      sandbox.innerHTML =
+        '<table><tr><td id="test">OLD CELL</td></tr></tablen>';
       var el = document.createElement("td");
-      el.id = "test"
+      el.id = "test";
       el.textContent = "New Cell!";
-      treetop.updateElement(el, document.getElementById("test"));
+      treetop.mount(el, document.getElementById("test"));
       expect(document.getElementById("test").textContent).to.equal("New Cell!");
     });
 
-    it('should mount components on the new element', () => {
+    it("should mount components on the new element", () => {
       sandbox.innerHTML = '<table><tr><td id="test">OLD CELL</td></tr></table>';
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.updateElement(el, document.getElementById("test"));
+      treetop.mount(el, document.getElementById("test"));
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
       var unmount = window.treetop.config().unmountAttrs["test"];
       expect(calledWithStrict(unmount, el)).to.be.false;
     });
 
-    it('should unmount components on the old element', () => {
-      sandbox.innerHTML = '<table><tr><td test id="test-cell">OLD CELL</td></tr></table>';
-      var oldElm = document.getElementById("test-cell")
+    it("should unmount components on the old element", () => {
+      sandbox.innerHTML =
+        '<table><tr><td test id="test-cell">OLD CELL</td></tr></table>';
+      var oldElm = document.getElementById("test-cell");
       var el = document.createElement("td");
       el.textContent = "New Cell!";
       el.setAttribute("test", "something");
-      treetop.updateElement(el, oldElm);
+      treetop.mount(el, oldElm);
       var unmount = window.treetop.config().unmountAttrs["test"];
       expect(calledWithStrict(unmount, oldElm)).to.be.true;
       var mount = window.treetop.config().mountAttrs["test"];
@@ -584,31 +672,35 @@ describe('Treetop', () => {
   });
 
   // treetop.mountChild
-  describe('treetop.mountChild API method', () => {
-    var el
+  describe("treetop.mountChild API method", () => {
+    var el;
     beforeEach(() => {
-      sandbox.innerHTML = '<table><tr id="test"><td>First Cell</td></tr></tablen>';
+      sandbox.innerHTML =
+        '<table><tr id="test"><td>First Cell</td></tr></tablen>';
       el = document.createElement("td");
       el.textContent = "Second Cell!";
       el.setAttribute("test", "something");
       treetop.mountChild(el, document.getElementById("test"));
     });
 
-    it('should allow a child element to be created outside and mounted normally', () => {
-      expect(document.getElementById("test").textContent).to.equal("First CellSecond Cell!");
+    it("should allow a child element to be created outside and mounted normally", () => {
+      expect(document.getElementById("test").textContent).to.equal(
+        "First CellSecond Cell!"
+      );
     });
 
-    it('should mount components on the new element', () => {
+    it("should mount components on the new element", () => {
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
     });
   });
 
   // treetop.mountBefore
-  describe('treetop.mountBefore API method', () => {
-    var el
+  describe("treetop.mountBefore API method", () => {
+    var el;
     beforeEach(() => {
-      sandbox.innerHTML = '<table id="mount_test"><tr><td id="test">First Cell</td></tr></tablen>';
+      sandbox.innerHTML =
+        '<table id="mount_test"><tr><td id="test">First Cell</td></tr></tablen>';
       el = document.createElement("td");
       el.textContent = "Second Cell!";
       el.setAttribute("test", "something");
@@ -616,36 +708,38 @@ describe('Treetop', () => {
       treetop.mountBefore(el, testEl);
     });
 
-    it('should allow a child element to be created outside and mounted normally', () => {
-      expect(document.getElementById("mount_test").textContent).to.equal("Second Cell!First Cell");
+    it("should allow a child element to be created outside and mounted normally", () => {
+      expect(document.getElementById("mount_test").textContent).to.equal(
+        "Second Cell!First Cell"
+      );
     });
 
-    it('should mount components on the new element', () => {
+    it("should mount components on the new element", () => {
       var mount = window.treetop.config().mountAttrs["test"];
       expect(calledWithStrict(mount, el)).to.be.true;
     });
   });
 
   // treetop.unmount
-  describe('treetop.unmount API method', () => {
-    var el
+  describe("treetop.unmount API method", () => {
+    var el;
     beforeEach(() => {
-      sandbox.innerHTML = '<table id="mount_test"><tr><td test id="test">First Cell</td></tr></tablen>';
+      sandbox.innerHTML =
+        '<table id="mount_test"><tr><td test id="test">First Cell</td></tr></tablen>';
       el = document.getElementById("test");
       treetop.unmount(el);
     });
 
-    it('should allow a child element to be created outside and mounted normally', () => {
+    it("should allow a child element to be created outside and mounted normally", () => {
       expect(document.getElementById("mount_test").textContent).to.equal("");
     });
 
-    it('should mount components on the new element', () => {
+    it("should mount components on the new element", () => {
       var unmount = window.treetop.config().unmountAttrs["test"];
       expect(calledWithStrict(unmount, el)).to.be.true;
     });
   });
 });
-
 
 /// utils
 //
@@ -656,9 +750,8 @@ describe('Treetop', () => {
 function calledWithStrict(spy) {
   var calls = spy.getCalls();
   var call;
-  var args = Array.prototype.slice.call(arguments, 1)
-  SCAN:
-  for (var i = 0, len = calls.length; i < len; i++) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  SCAN: for (var i = 0, len = calls.length; i < len; i++) {
     call = calls[i];
     if (call.args.length !== args.length) continue SCAN;
     for (var j = 0, lenj = args.length; j < lenj; j++) {

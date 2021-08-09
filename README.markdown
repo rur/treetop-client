@@ -79,8 +79,8 @@ Once the configuration is set it cannot be modified.
 
 When an element has been added or removed from the DOM by the Treetop library, the node hierarchy is scanned for elements matching the configured mount/unmount functions.
 
-- `mountAttrs`: match attribute name after being attached
-- `unmountAttrs`: match attribute name after removal
+-   `mountAttrs`: match attribute name after being attached
+-   `unmountAttrs`: match attribute name after removal
 
 Custom JS components should use these to configure integration hooks.
 
@@ -148,11 +148,11 @@ This is similar to the following,
 
 The `treetop-submitter` triggers a treetop submit on a target form element with the attached element as the designated submitter. The following 'submitter' attributes are supported:
 
-- form - specify the form to be submitted by node ID (not necessary if the submitter is enclosed)
-- formmethod - override the method of the target form
-- formaction - override the action of the target form
-- formenctype - override the enctype of the target form
-- formnovalidate - override client-side validation when submitting form
+-   form - specify the form to be submitted by node ID (not necessary if the submitter is enclosed)
+-   formmethod - override the method of the target form
+-   formaction - override the action of the target form
+-   formenctype - override the enctype of the target form
+-   formnovalidate - override client-side validation when submitting form
 
 If a field name and value are specified on the submitter element, that will be included in the form data.
 
@@ -223,11 +223,11 @@ document.addEventListener("treetopcomplete", function () {
 
 Backwards compatibility is a priority for the client library. It has been designed to rely on long-supported APIs where possible. However, if broad browser support is important to you, the following modern browser features require a ployfill:
 
-- `history.pushState`, so that the location can be updated following partial navigation.
-- `history.replaceState`, to support Treetop 'X-Response-History' header, fallback to pushState.
-- `FormData`, required for multipart form data to be encoded for XHR.
-- `HTMLTemplateElement`, for reliable decoding of HTML strings.
-  - Suggested polyfill library https://github.com/webcomponents/template
+-   `history.pushState`, so that the location can be updated following partial navigation.
+-   `history.replaceState`, to support Treetop 'X-Response-History' header, fallback to pushState.
+-   `FormData`, required for multipart form data to be encoded for XHR.
+-   `HTMLTemplateElement`, for reliable decoding of HTML strings.
+    -   Suggested polyfill library https://github.com/webcomponents/template
 
 The Treetop client library will abort loading and throw an error if these features are not available.
 
