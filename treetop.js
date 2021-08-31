@@ -17,7 +17,6 @@
 //
 // Global browser footprint of this script:
 //      * Assigns `window.treetop` with Treetop API instance;
-//      * Assigns `window.onpopstate` with a handler that refreshes the page when a treetop entry is popped from the browser history;
 //      * Built-in components attach various event listeners when mounted. (Built-ins can be disabled, see docs)
 //
 
@@ -121,7 +120,7 @@ window.treetop = (function ($) {
             $.mountAttrs["treetop-submitter"] = $.bind($.submitterMount, $);
         }
 
-        window.onpopstate = function (evt) {
+        window.addEventListener("popstate", function (evt) {
             // Taken from https://github.com/ReactTraining/history/blob/master/modules/createBrowserHistory.js
             var stateFromHistory = (history && history.state) || null;
             var isPageLoadPopState = evt.state === null && !!stateFromHistory;
@@ -135,7 +134,15 @@ window.treetop = (function ($) {
                 return;
             }
             $.browserPopState(evt);
-        };
+        });
+
+        window.addEventListener("beforeunload", function () {
+            $.ignoreNetworkErrors = true;
+            this.setTimeout(function () {
+                // we're still alive, the unload was cancelled, unset the flag
+                $.ignoreNetworkErrors = false;
+            }, 500);
+        });
 
         // normalize initial history state
         history.replaceState(
@@ -440,7 +447,10 @@ window.treetop = (function ($) {
             }
         };
         xhr.onerror = function () {
-            if (typeof $.onNetworkError === "function") {
+            if (
+                !$.ignoreNetworkErrors &&
+                typeof $.onNetworkError === "function"
+            ) {
                 // Network level error, likely a connection problem
                 $.onNetworkError(xhr);
             }
