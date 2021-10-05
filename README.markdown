@@ -43,7 +43,7 @@ assigning `window.treetop`.
 ### Initialization
 
 To make use of custom integration hooks or the built-in components, the client
-must have configuration assigned **before** any XHR requests are made.
+must have configuration assigned **before** any `treetop.request(...)` calls are made.
 
 <!-- TODO: add troubleshooting docs -->
 
